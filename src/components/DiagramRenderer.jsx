@@ -106,11 +106,13 @@ function ConnectionArrow({ conn, positions }) {
   const to = positions[conn.toId];
   if (!from || !to) return null;
 
-  const pts = routeArrow(from, to, conn.exitSide, conn.entrySide);
+  const pts = routeArrow(from, to, conn.exitSide, conn.entrySide, conn.laneBottomY);
   const pointsStr = pts.map(p => `${p[0]},${p[1]}`).join(' ');
 
-  const midIdx = Math.floor(pts.length / 2);
-  const labelPt = pts[midIdx];
+  // Place label at the midpoint of the longest/routing segment (pts[1]→pts[2] for 4-pt paths)
+  const labelPt = pts.length >= 4
+    ? [(pts[1][0] + pts[2][0]) / 2, (pts[1][1] + pts[2][1]) / 2]
+    : pts[Math.floor(pts.length / 2)];
 
   return (
     <g>
@@ -191,7 +193,8 @@ function LegendIcon({ type }) {
 }
 
 export default function DiagramRenderer({ flow, showExport = true }) {
-  const svgRef = useRef(null);
+  // exportRef wraps just the SVG element so toPng captures the full diagram, not the scroll window
+  const exportRef = useRef(null);
 
   if (!flow || !flow.roles?.length || !flow.tasks?.length) {
     return (
@@ -204,9 +207,10 @@ export default function DiagramRenderer({ flow, showExport = true }) {
   const { positions, connections, l4Numbers, svgWidth, svgHeight } = computeLayout(flow);
 
   async function handleExport() {
-    if (!svgRef.current) return;
+    if (!exportRef.current) return;
     try {
-      const dataUrl = await toPng(svgRef.current, { pixelRatio: 2 });
+      // Capture the inner SVG wrapper (full diagram size, not clipped by scroll container)
+      const dataUrl = await toPng(exportRef.current, { pixelRatio: 2, backgroundColor: '#ffffff' });
       const a = document.createElement('a');
       a.download = `${flow.l3Number}-${flow.l3Name}.png`;
       a.href = dataUrl;
@@ -217,7 +221,7 @@ export default function DiagramRenderer({ flow, showExport = true }) {
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3 w-full">
       {showExport && (
         <div className="flex items-center gap-3">
           <span className="text-sm text-gray-600 font-medium">
@@ -225,12 +229,15 @@ export default function DiagramRenderer({ flow, showExport = true }) {
           </span>
           <button onClick={handleExport}
             className="ml-auto px-4 py-1.5 text-sm bg-gray-700 text-white rounded hover:bg-gray-900 transition-colors">
-            ↓ 匯出 PNG
+            ↓ 匯出完整 PNG
           </button>
         </div>
       )}
 
-      <div className="overflow-auto border border-gray-300 rounded-lg bg-white" ref={svgRef}>
+      {/* Scroll container for viewing — does not affect export */}
+      <div className="overflow-auto border border-gray-300 rounded-lg bg-white w-full">
+        {/* exportRef wraps just the SVG so export is full-size */}
+        <div ref={exportRef} style={{ display: 'inline-block', background: '#fff' }}>
         <svg width={svgWidth} height={svgHeight} xmlns="http://www.w3.org/2000/svg">
           <ArrowMarkers />
 
@@ -297,7 +304,8 @@ export default function DiagramRenderer({ flow, showExport = true }) {
             return <TaskShape key={task.id} task={task} pos={pos} l4Number={num} />;
           })}
         </svg>
-      </div>
+        </div>{/* end exportRef wrapper */}
+      </div>{/* end scroll container */}
 
       <LegendSection />
     </div>

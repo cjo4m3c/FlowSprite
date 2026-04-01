@@ -620,10 +620,10 @@ export default function Wizard({ flow, onSave, onCancel }) {
         <span className="text-lg font-bold tracking-wide">{flow ? '編輯 L3 流程' : '新增 L3 流程'}</span>
       </header>
 
-      <main className="max-w-5xl mx-auto px-6 py-8">
+      <main className={`mx-auto py-8 w-full ${step <= 1 ? 'max-w-3xl px-6' : step === 2 ? 'max-w-5xl px-4' : 'px-4'}`}>
         <StepIndicator current={step} steps={STEPS} />
 
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 min-h-64 overflow-x-auto">
+        <div className={`bg-white rounded-xl border border-gray-200 shadow-sm min-h-64 overflow-x-auto ${step === 3 ? 'p-4' : 'p-6'}`}>
           {step === 0 && <Step1 data={data} onChange={update} />}
           {step === 1 && <Step2 data={data} onChange={update} />}
           {step === 2 && <Step3 data={data} onChange={update} />}

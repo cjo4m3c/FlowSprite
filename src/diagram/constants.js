@@ -2,7 +2,7 @@ export const LAYOUT = {
   TITLE_H: 54,
   LANE_HEADER_W: 130,
   COL_W: 168,
-  LANE_H: 116,
+  LANE_H: 140,
   NODE_W: 128,
   NODE_H: 52,
   DIAMOND_SIZE: 38,
