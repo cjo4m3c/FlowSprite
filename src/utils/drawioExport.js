@@ -90,6 +90,11 @@ export function exportDrawio(flow) {
         `rhombus;whiteSpace=wrap;html=0;fillColor=${COLORS.GATEWAY_FILL};strokeColor=${COLORS.GATEWAY_STROKE};strokeWidth=1.5;fontSize=10;align=center;verticalAlign=middle;`,
         task.name || '');
 
+    } else if (task.type === 'l3activity') {
+      // Double-border via Draw.io's built-in "double" style
+      cellId = rect(pos.cx - NODE_W / 2, pos.cy - NODE_H / 2, NODE_W, NODE_H,
+        `whiteSpace=wrap;html=0;fillColor=${COLORS.L3_ACTIVITY_FILL};strokeColor=${COLORS.L3_ACTIVITY_STROKE};strokeWidth=1.5;fontSize=10;align=center;verticalAlign=middle;double=1;`,
+        label);
     } else {
       const fill = task.type === 'interaction' ? COLORS.INTERACTION_FILL : COLORS.TASK_FILL;
       cellId = rect(pos.cx - NODE_W / 2, pos.cy - NODE_H / 2, NODE_W, NODE_H,

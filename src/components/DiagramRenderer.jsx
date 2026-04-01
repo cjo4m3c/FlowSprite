@@ -5,6 +5,7 @@ import { LAYOUT, COLORS } from '../diagram/constants.js';
 import { exportDrawio } from '../utils/drawioExport.js';
 
 const { LANE_HEADER_W, COL_W, LANE_H, TITLE_H, NODE_W, NODE_H, DIAMOND_SIZE, CIRCLE_R } = LAYOUT;
+const L3_INSET = 4; // inner border inset for L3 Activity shape
 
 function wrapText(text, maxChars) {
   if (!text) return [];
@@ -90,6 +91,25 @@ function TaskShape({ task, pos, l4Number }) {
   );
 }
 
+function L3ActivityShape({ task, pos, l4Number }) {
+  const { cx, cy } = pos;
+  const x = cx - NODE_W / 2;
+  const y = cy - NODE_H / 2;
+  return (
+    <>
+      <L4Number number={l4Number} cx={cx} y={y} />
+      {/* Outer border */}
+      <rect x={x} y={y} width={NODE_W} height={NODE_H}
+        fill={COLORS.L3_ACTIVITY_FILL} stroke={COLORS.L3_ACTIVITY_STROKE} strokeWidth={1.5} rx={0} />
+      {/* Inner border — the double-border marks this as an L3 Activity reference */}
+      <rect x={x + L3_INSET} y={y + L3_INSET}
+        width={NODE_W - 2 * L3_INSET} height={NODE_H - 2 * L3_INSET}
+        fill="none" stroke={COLORS.L3_ACTIVITY_STROKE} strokeWidth={1} rx={0} />
+      <SvgLabel text={task.name} cx={cx} cy={cy} maxChars={7} lineH={14} />
+    </>
+  );
+}
+
 function GatewayShape({ task, pos, l4Number }) {
   const { cx, cy } = pos;
   const d = DIAMOND_SIZE;
@@ -150,13 +170,13 @@ function ConnectionArrow({ conn, positions }) {
 
 function LegendSection() {
   const items = [
-    { shape: 'start', label: '開始事件（活動起點）' },
-    { shape: 'end', label: '結束事件（活動終點）' },
-    { shape: 'task', label: 'L4 任務' },
-    { shape: 'interaction', label: '外部關係人動作（互動）' },
-    { shape: 'gateway', label: '網關（決策點）' },
-    { shape: 'arrow', label: '順序流' },
-    { shape: 'dashed', label: '消息流' },
+    { shape: 'start',      label: '活動起點' },
+    { shape: 'end',        label: '活動終點' },
+    { shape: 'task',       label: 'L4 任務' },
+    { shape: 'interaction',label: '外部關係人互動' },
+    { shape: 'gateway',    label: '判斷框' },
+    { shape: 'l3activity', label: 'L3 活動（關聯）' },
+    { shape: 'arrow',      label: '順序流' },
   ];
 
   return (
@@ -192,16 +212,16 @@ function LegendIcon({ type }) {
   if (type === 'gateway') return (
     <svg width={s} height={s}><polygon points={`${c},4 ${s-4},${c} ${c},${s-4} 4,${c}`} fill={COLORS.GATEWAY_FILL} stroke={COLORS.GATEWAY_STROKE} strokeWidth={1.2} /></svg>
   );
+  if (type === 'l3activity') return (
+    <svg width={s} height={s}>
+      <rect x={3} y={6} width={30} height={22} fill={COLORS.L3_ACTIVITY_FILL} stroke={COLORS.L3_ACTIVITY_STROKE} strokeWidth={1.5} />
+      <rect x={6} y={9} width={24} height={16} fill="none" stroke={COLORS.L3_ACTIVITY_STROKE} strokeWidth={0.8} />
+    </svg>
+  );
   if (type === 'arrow') return (
     <svg width={s} height={s}>
       <defs><marker id="leg-ah" markerWidth="6" markerHeight="5" refX="6" refY="2.5" orient="auto"><polygon points="0 0,6 2.5,0 5" fill={COLORS.ARROW_COLOR} /></marker></defs>
       <line x1={2} y1={c} x2={s-6} y2={c} stroke={COLORS.ARROW_COLOR} strokeWidth={1.5} markerEnd="url(#leg-ah)" />
-    </svg>
-  );
-  if (type === 'dashed') return (
-    <svg width={s} height={s}>
-      <defs><marker id="leg-ahd" markerWidth="6" markerHeight="5" refX="6" refY="2.5" orient="auto"><polygon points="0 0,6 2.5,0 5" fill={COLORS.ARROW_COLOR} /></marker></defs>
-      <line x1={2} y1={c} x2={s-6} y2={c} stroke={COLORS.ARROW_COLOR} strokeWidth={1.5} strokeDasharray="4 3" markerEnd="url(#leg-ahd)" />
     </svg>
   );
   return null;
@@ -278,7 +298,7 @@ export default function DiagramRenderer({ flow, showExport = true }) {
           <text x={svgWidth / 2} y={TITLE_H / 2} textAnchor="middle" dominantBaseline="middle"
             fill={COLORS.TITLE_TEXT} fontSize={16} fontWeight="bold"
             fontFamily="Microsoft JhengHei, PingFang TC, sans-serif">
-            {flow.l3Number}　{flow.l3Name}　— 業務流程泳道圖
+            {flow.l3Number}　{flow.l3Name}　— 業務活動泳道圖
           </text>
 
           {/* Lane headers and bodies */}
@@ -330,6 +350,7 @@ export default function DiagramRenderer({ flow, showExport = true }) {
             if (task.type === 'start') return <StartShape key={task.id} pos={pos} l4Number={num} task={task} />;
             if (task.type === 'end') return <EndShape key={task.id} pos={pos} l4Number={num} task={task} />;
             if (task.type === 'gateway') return <GatewayShape key={task.id} task={task} pos={pos} l4Number={num} />;
+            if (task.type === 'l3activity') return <L3ActivityShape key={task.id} task={task} pos={pos} l4Number={num} />;
             return <TaskShape key={task.id} task={task} pos={pos} l4Number={num} />;
           })}
         </svg>

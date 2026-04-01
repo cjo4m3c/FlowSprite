@@ -4,18 +4,20 @@ import DiagramRenderer from './DiagramRenderer.jsx';
 
 // ── Constants ────────────────────────────────────────────────────
 const TASK_TYPES = [
-  { value: 'task',        label: '任務' },
+  { value: 'task',        label: 'L4 任務' },
   { value: 'start',       label: '開始事件' },
   { value: 'end',         label: '結束事件' },
-  { value: 'interaction', label: '互動（外部）' },
-  { value: 'gateway',     label: '網關（決策點）' },
+  { value: 'interaction', label: '互動（外部關係人）' },
+  { value: 'gateway',     label: '判斷框' },
+  { value: 'l3activity',  label: 'L3 活動（關聯）' },
 ];
 
 const TYPE_BADGE = {
   start:       { label: '開始', bg: '#D1FAE5', text: '#065F46' },
   end:         { label: '結束', bg: '#FEE2E2', text: '#991B1B' },
-  gateway:     { label: '網關', bg: '#FEF3C7', text: '#92400E' },
+  gateway:     { label: '判斷', bg: '#FEF3C7', text: '#92400E' },
   interaction: { label: '互動', bg: '#E5E7EB', text: '#374151' },
+  l3activity:  { label: 'L3', bg: '#EFF6FF', text: '#1D4ED8' },
 };
 
 // ── Factories ────────────────────────────────────────────────────
@@ -24,7 +26,7 @@ function makeRole() {
 }
 
 function makeTask(overrides = {}) {
-  return { id: generateId(), roleId: '', name: '', type: 'task', conditions: [], nextTaskId: '', ...overrides };
+  return { id: generateId(), roleId: '', name: '', type: 'task', conditions: [], nextTaskIds: [], ...overrides };
 }
 
 function makeCondition() {
@@ -33,11 +35,12 @@ function makeCondition() {
 
 function initFormData(flow) {
   if (flow) {
-    // Migrate: ensure nextTaskId exists on every task
-    const tasks = (flow.tasks || []).map((t, i, arr) => ({
-      ...t,
-      nextTaskId: t.nextTaskId !== undefined ? t.nextTaskId : (arr[i + 1]?.id || ''),
-    }));
+    // Migrate legacy nextTaskId → nextTaskIds[]
+    const tasks = (flow.tasks || []).map(t => {
+      if (t.nextTaskIds?.length) return t;
+      const ids = t.nextTaskId ? [t.nextTaskId] : [];
+      return { ...t, nextTaskIds: ids };
+    });
     return { ...flow, tasks };
   }
 
@@ -45,8 +48,8 @@ function initFormData(flow) {
   const tasks = Array.from({ length: 8 }, (_, i) =>
     makeTask({ type: i === 0 ? 'start' : 'task' })
   );
-  // Set sequential nextTaskId defaults
-  tasks.forEach((t, i) => { t.nextTaskId = tasks[i + 1]?.id || ''; });
+  // Set sequential nextTaskIds defaults
+  tasks.forEach((t, i) => { t.nextTaskIds = tasks[i + 1] ? [tasks[i + 1].id] : []; });
 
   return {
     id: generateId(),
@@ -77,8 +80,9 @@ function taskOptionLabel(task, displayLabels) {
   const name = task.name.trim();
   if (task.type === 'start') return `【開始】${name ? ' ' + name : ''}`;
   if (task.type === 'end')   return `【結束】${name ? ' ' + name : ''}`;
-  if (task.type === 'gateway') return `◇ 網關：${name || '（未命名）'}`;
+  if (task.type === 'gateway')    return `◇ 判斷：${name || '（未命名）'}`;
   if (task.type === 'interaction') return `□ 互動：${name || '（未命名）'}`;
+  if (task.type === 'l3activity')  return `⊞ L3活動：${name || '（未命名）'}`;
   return `${lbl}${name ? ' ' + name : ' （未命名）'}`;
 }
 
@@ -175,11 +179,11 @@ function Step1({ data, onChange }) {
 
   return (
     <div className="max-w-lg mx-auto">
-      <h2 className="text-xl font-bold text-gray-800 mb-1">L3 流程基本資訊</h2>
-      <p className="text-sm text-gray-500 mb-6">輸入此工作流的名稱與層級編號</p>
+      <h2 className="text-xl font-bold text-gray-800 mb-1">L3 活動基本資訊</h2>
+      <p className="text-sm text-gray-500 mb-6">輸入此活動的名稱與層級編號</p>
       <div className="flex flex-col gap-5">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">L3 流程編號 <span className="text-red-500">*</span></label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">L3 活動編號 <span className="text-red-500">*</span></label>
           <input type="text" placeholder="例：1.1.1" value={data.l3Number}
             onChange={e => handleNumber(e.target.value)}
             className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 ${numErr ? 'border-red-400' : 'border-gray-300'}`} />
@@ -187,7 +191,7 @@ function Step1({ data, onChange }) {
           <p className="text-xs text-gray-400 mt-1">三層編碼，例：1.1.1、2.3.4</p>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">L3 流程名稱 <span className="text-red-500">*</span></label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">L3 活動名稱 <span className="text-red-500">*</span></label>
           <input type="text" placeholder="例：建立商機報價" value={data.l3Name}
             onChange={e => onChange({ l3Name: e.target.value })}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
@@ -311,12 +315,26 @@ function TaskRow({ task, rowIndex, roles, allTasks, displayLabels, onUpdate, onR
   function handleTypeChange(newType) {
     const updates = { type: newType };
     if (newType !== 'gateway') updates.conditions = [];
-    if (newType === 'end') updates.nextTaskId = '';
+    if (newType === 'end') updates.nextTaskIds = [];
     onUpdate({ ...task, ...updates });
   }
 
   function addCondition() {
     onUpdate({ ...task, conditions: [...(task.conditions || []), makeCondition()] });
+  }
+
+  function updateNextId(idx, val) {
+    const updated = [...(task.nextTaskIds || [])];
+    updated[idx] = val;
+    onUpdate({ ...task, nextTaskIds: updated });
+  }
+
+  function removeNextId(idx) {
+    onUpdate({ ...task, nextTaskIds: (task.nextTaskIds || []).filter((_, i) => i !== idx) });
+  }
+
+  function addParallelNext() {
+    onUpdate({ ...task, nextTaskIds: [...(task.nextTaskIds || []), ''] });
   }
 
   // Available tasks for "next task" dropdown (exclude self, include all with roleId)
@@ -370,18 +388,32 @@ function TaskRow({ task, rowIndex, roles, allTasks, displayLabels, onUpdate, onR
           {TASK_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
         </select>
 
-        {/* Next task dropdown */}
+        {/* Next task — supports multiple parallel targets */}
         {showNextTask ? (
-          <select value={task.nextTaskId || ''}
-            onChange={e => onUpdate({ ...task, nextTaskId: e.target.value })}
-            className="w-36 flex-shrink-0 px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-400">
-            <option value="">→ 下一步</option>
-            {nextOptions.map(t => (
-              <option key={t.id} value={t.id}>{taskOptionLabel(t, displayLabels)}</option>
+          <div className="w-40 flex-shrink-0 flex flex-col gap-1">
+            {(task.nextTaskIds || []).map((nid, idx) => (
+              <div key={idx} className="flex items-center gap-1">
+                <select value={nid}
+                  onChange={e => updateNextId(idx, e.target.value)}
+                  className="flex-1 min-w-0 px-1.5 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-400">
+                  <option value="">{idx === 0 ? '→ 下一步' : `→ 並行 ${idx + 1}`}</option>
+                  {nextOptions.map(t => (
+                    <option key={t.id} value={t.id}>{taskOptionLabel(t, displayLabels)}</option>
+                  ))}
+                </select>
+                {idx > 0 && (
+                  <button onClick={() => removeNextId(idx)}
+                    className="text-red-400 hover:text-red-600 text-xs flex-shrink-0">✕</button>
+                )}
+              </div>
             ))}
-          </select>
+            <button onClick={addParallelNext}
+              className="text-left text-xs text-blue-500 hover:text-blue-700 leading-none">
+              + 並行
+            </button>
+          </div>
         ) : (
-          <div className="w-36 flex-shrink-0" />
+          <div className="w-40 flex-shrink-0" />
         )}
 
         {/* Remove */}
@@ -422,11 +454,11 @@ function Step3({ data, onChange }) {
   const { dragIdx, overIdx, rowProps } = useDragReorder(
     data.tasks,
     newTasks => {
-      // After drag reorder, auto-update nextTaskId to match new sequential order.
-      // Gateway and end tasks don't use nextTaskId — leave them unchanged.
+      // After drag reorder, auto-reset nextTaskIds to sequential order.
+      // Gateway and end tasks don't use nextTaskIds — leave them unchanged.
       const updated = newTasks.map((t, i) => {
         if (t.type === 'gateway' || t.type === 'end') return t;
-        return { ...t, nextTaskId: newTasks[i + 1]?.id || '' };
+        return { ...t, nextTaskIds: newTasks[i + 1] ? [newTasks[i + 1].id] : [] };
       });
       onChange({ tasks: updated });
     }
@@ -474,7 +506,7 @@ function Step3({ data, onChange }) {
         <span className="w-28 flex-shrink-0">角色 *</span>
         <span className="flex-1">任務名稱</span>
         <span className="w-28 flex-shrink-0">類型</span>
-        <span className="w-36 flex-shrink-0">下一步 →</span>
+        <span className="w-40 flex-shrink-0">下一步 →</span>
         <span className="w-6 flex-shrink-0" />
       </div>
 
@@ -505,7 +537,8 @@ function Step3({ data, onChange }) {
       <div className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-500">
         <strong>提示：</strong>
         「下一步」欄位設定此任務完成後要連接哪個步驟，系統已帶入預設值。
-        網關類型改用「網關條件」控制分支，不使用下一步欄位。
+        點選「+ 並行」可新增多個並行的下一步目標，代表後續步驟同時進行。
+        判斷框改用「條件」控制分支。
         空白欄位（無角色且無名稱）在產生圖表時自動忽略。
       </div>
     </div>
@@ -527,7 +560,7 @@ function Step4({ data }) {
 
     const tasks = validTasks.map(t => ({
       ...t,
-      nextTaskId: t.nextTaskId && validTaskIds.has(t.nextTaskId) ? t.nextTaskId : '',
+      nextTaskIds: (t.nextTaskIds || []).filter(id => id && validTaskIds.has(id)),
       conditions: (t.conditions || []).filter(c =>
         c.label.trim() && c.nextTaskId && validTaskIds.has(c.nextTaskId)
       ),
@@ -583,10 +616,10 @@ function validate(step, data) {
         return `任務「${t.type === 'gateway' ? '（網關）' : ''}」缺少名稱，請填入或移除該欄位`;
       }
       if (t.type === 'gateway') {
-        if (!t.conditions?.length) return `網關「${t.name || '（未命名）'}」必須至少設定一個條件`;
+        if (!t.conditions?.length) return `判斷框「${t.name || '（未命名）'}」必須至少設定一個條件`;
         for (const c of t.conditions) {
-          if (!c.label.trim())  return `網關「${t.name}」有條件缺少標籤`;
-          if (!c.nextTaskId)    return `網關「${t.name}」有條件未選擇目標任務`;
+          if (!c.label.trim())  return `判斷框「${t.name}」有條件缺少標籤`;
+          if (!c.nextTaskId)    return `判斷框「${t.name}」有條件未選擇目標任務`;
         }
       }
     }
@@ -597,7 +630,7 @@ function validate(step, data) {
 }
 
 // ── Main Wizard ──────────────────────────────────────────────────
-const STEPS = ['L3 基本資訊', '泳道角色', 'L4 任務', '圖表預覽'];
+const STEPS = ['L3 活動資訊', '泳道角色', 'L4 任務', '圖表預覽'];
 
 export default function Wizard({ flow, onSave, onCancel }) {
   const [step, setStep] = useState(0);
@@ -625,7 +658,7 @@ export default function Wizard({ flow, onSave, onCancel }) {
     <div className="min-h-screen" style={{ background: '#F3F4F6' }}>
       <header className="px-6 py-3 shadow-md flex items-center gap-4" style={{ background: '#4A5240', color: 'white' }}>
         <button onClick={onCancel} className="opacity-70 hover:opacity-100 text-sm">← 返回</button>
-        <span className="text-lg font-bold tracking-wide">{flow ? '編輯 L3 流程' : '新增 L3 流程'}</span>
+        <span className="text-lg font-bold tracking-wide">{flow ? '編輯 L3 活動' : '新增 L3 活動'}</span>
       </header>
 
       <main className={`mx-auto py-8 w-full ${step <= 1 ? 'max-w-3xl px-6' : step === 2 ? 'max-w-5xl px-4' : 'px-4'}`}>

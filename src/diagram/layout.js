@@ -5,6 +5,7 @@ const { LANE_HEADER_W, COL_W, LANE_H, TITLE_H, NODE_W, NODE_H, DIAMOND_SIZE, CIR
 function halfExtent(type, axis) {
   if (type === 'gateway') return DIAMOND_SIZE;
   if (type === 'start' || type === 'end') return CIRCLE_R;
+  // 'task', 'interaction', 'l3activity' all share the same node bounding box
   return axis === 'x' ? NODE_W / 2 : NODE_H / 2;
 }
 
@@ -89,10 +90,17 @@ export function computeLayout(flow) {
           : undefined;
         connections.push({ fromId: task.id, toId: toTask.id, label: cond.label, exitSide, entrySide, laneBottomY });
       });
-    } else if (task.type !== 'end' && task.type !== 'gateway' && task.nextTaskId && taskIdSet.has(task.nextTaskId)) {
-      const toTask = tasks.find(t => t.id === task.nextTaskId);
-      if (!toTask) return;
-      connections.push({ fromId: task.id, toId: toTask.id, label: '', exitSide: 'right', entrySide: 'left', laneBottomY: undefined });
+    } else if (task.type !== 'end' && task.type !== 'gateway') {
+      // Support both legacy nextTaskId and new nextTaskIds[]
+      const nextIds = task.nextTaskIds?.length
+        ? task.nextTaskIds
+        : (task.nextTaskId ? [task.nextTaskId] : []);
+      nextIds.forEach(nextId => {
+        if (!nextId || !taskIdSet.has(nextId)) return;
+        const toTask = tasks.find(t => t.id === nextId);
+        if (!toTask) return;
+        connections.push({ fromId: task.id, toId: toTask.id, label: '', exitSide: 'right', entrySide: 'left', laneBottomY: undefined });
+      });
     }
   });
 

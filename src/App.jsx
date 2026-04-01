@@ -1,52 +1,40 @@
 import { useState } from 'react';
 import Dashboard from './components/Dashboard.jsx';
 import Wizard from './components/Wizard.jsx';
+import FlowViewer from './components/FlowViewer.jsx';
 import { loadFlows, saveFlow, deleteFlow } from './utils/storage.js';
 
 export default function App() {
   const [view, setView] = useState('dashboard');
   const [flows, setFlows] = useState(() => loadFlows());
-  const [editingFlowId, setEditingFlowId] = useState(null);
+  const [activeFlowId, setActiveFlowId] = useState(null);
 
-  function refreshFlows() {
-    setFlows(loadFlows());
-  }
+  function refreshFlows() { setFlows(loadFlows()); }
 
-  function handleNew() {
-    setEditingFlowId(null);
-    setView('wizard');
-  }
+  function handleNew() { setActiveFlowId(null); setView('wizard'); }
 
-  function handleEdit(id) {
-    setEditingFlowId(id);
-    setView('wizard');
-  }
+  function handleEdit(id) { setActiveFlowId(id); setView('wizard'); }
 
-  function handleSave(flow) {
-    saveFlow(flow);
-    refreshFlows();
-    setView('dashboard');
-  }
+  function handleView(id) { setActiveFlowId(id); setView('view'); }
 
-  function handleDelete(id) {
-    deleteFlow(id);
-    refreshFlows();
-  }
+  function handleSave(flow) { saveFlow(flow); refreshFlows(); setView('dashboard'); }
 
-  function handleCancel() {
-    setView('dashboard');
-  }
+  function handleDelete(id) { deleteFlow(id); refreshFlows(); }
 
-  const editingFlow = editingFlowId
-    ? flows.find(f => f.id === editingFlowId) ?? null
-    : null;
+  function handleCancel() { setView('dashboard'); }
+
+  const activeFlow = activeFlowId ? flows.find(f => f.id === activeFlowId) ?? null : null;
 
   if (view === 'wizard') {
+    return <Wizard flow={activeFlow} onSave={handleSave} onCancel={handleCancel} />;
+  }
+
+  if (view === 'view') {
     return (
-      <Wizard
-        flow={editingFlow}
-        onSave={handleSave}
-        onCancel={handleCancel}
+      <FlowViewer
+        flow={activeFlow}
+        onBack={handleCancel}
+        onEdit={() => handleEdit(activeFlowId)}
       />
     );
   }
@@ -56,6 +44,7 @@ export default function App() {
       flows={flows}
       onNew={handleNew}
       onEdit={handleEdit}
+      onView={handleView}
       onDelete={handleDelete}
     />
   );
