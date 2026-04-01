@@ -58,9 +58,9 @@ export function exportDrawio(flow) {
     rect(0, laneY, svgWidth, laneH,
       `strokeColor=${COLORS.LANE_BORDER};fillColor=${laneBg};html=1;`);
 
-    // Header strip with role name (rotated)
+    // Header strip with role name (horizontal text, no rotation)
     rect(0, laneY, LANE_HEADER_W, laneH,
-      `text;strokeColor=${headerBg};fillColor=${headerBg};fontColor=#ffffff;fontSize=12;fontStyle=1;align=center;verticalAlign=middle;html=1;rotation=-90;`,
+      `text;strokeColor=${headerBg};fillColor=${headerBg};fontColor=#ffffff;fontSize=12;fontStyle=1;align=center;verticalAlign=middle;whiteSpace=wrap;html=0;`,
       role.name);
   });
 
@@ -72,8 +72,8 @@ export function exportDrawio(flow) {
     if (!pos) return;
     const num = l4Numbers[task.id];
 
-    // Label: plain text with &#xa; for line break (no HTML needed, avoids escaping issues)
-    const label = num ? `${num}&#xa;${task.name}` : (task.name || '');
+    // Label: "L4編號-任務名稱" format with dash separator (&#xa; causes literal display when xa() escapes it)
+    const label = num ? `${num}-${task.name}` : (task.name || '');
 
     let cellId;
     if (task.type === 'start' || task.type === 'end') {
