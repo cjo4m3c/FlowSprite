@@ -1,3 +1,5 @@
+import HelpPanel from './HelpPanel.jsx';
+
 export default function Dashboard({ flows, onNew, onEdit, onView, onDelete }) {
   function fmtDate(iso) {
     if (!iso) return '';
@@ -18,6 +20,9 @@ export default function Dashboard({ flows, onNew, onEdit, onView, onDelete }) {
       <header className="px-6 py-3 shadow-md flex items-center gap-4" style={{ background: '#4A5240', color: 'white' }}>
         <span className="text-lg font-bold tracking-wide">業務活動管理系統</span>
         <span className="text-xs opacity-60">BPM Flow Designer</span>
+        <div className="ml-auto">
+          <HelpPanel />
+        </div>
       </header>
 
       <main className="max-w-5xl mx-auto px-6 py-8">
