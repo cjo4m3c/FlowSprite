@@ -1,10 +1,33 @@
+import { useState, useMemo } from 'react';
 import HelpPanel from './HelpPanel.jsx';
 
-export default function Dashboard({ flows, onNew, onEdit, onView, onDelete }) {
-  function fmtDate(iso) {
-    if (!iso) return '';
-    return new Date(iso).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' });
+const SORT_OPTIONS = [
+  { value: 'number-asc',  label: 'L3 編號 ↑' },
+  { value: 'number-desc', label: 'L3 編號 ↓' },
+  { value: 'updated-desc', label: '更新日期（最新）' },
+  { value: 'updated-asc',  label: '更新日期（最舊）' },
+];
+
+function sortFlows(flows, sortKey) {
+  const arr = [...flows];
+  switch (sortKey) {
+    case 'number-asc':
+      return arr.sort((a, b) => String(a.l3Number ?? '').localeCompare(String(b.l3Number ?? ''), 'zh-TW', { numeric: true }));
+    case 'number-desc':
+      return arr.sort((a, b) => String(b.l3Number ?? '').localeCompare(String(a.l3Number ?? ''), 'zh-TW', { numeric: true }));
+    case 'updated-desc':
+      return arr.sort((a, b) => (b.updatedAt ?? b.createdAt ?? '').localeCompare(a.updatedAt ?? a.createdAt ?? ''));
+    case 'updated-asc':
+      return arr.sort((a, b) => (a.updatedAt ?? a.createdAt ?? '').localeCompare(b.updatedAt ?? b.createdAt ?? ''));
+    default:
+      return arr;
   }
+}
+
+export default function Dashboard({ flows, onNew, onEdit, onView, onDelete }) {
+  const [sortKey, setSortKey] = useState('number-asc');
+
+  const sortedFlows = useMemo(() => sortFlows(flows, sortKey), [flows, sortKey]);
 
   function fmtDateTime(iso) {
     if (!iso) return '';
@@ -32,24 +55,34 @@ export default function Dashboard({ flows, onNew, onEdit, onView, onDelete }) {
             <h1 className="text-2xl font-bold text-gray-800">L3 活動管理</h1>
             <p className="text-sm text-gray-500 mt-1">管理所有 L3 活動，點選「檢視」可直接預覽 L4 泳道圖</p>
           </div>
-          <button onClick={onNew}
-            className="px-5 py-2 rounded-lg text-white font-medium shadow transition-colors"
-            style={{ background: '#2A52BE' }}
-            onMouseEnter={e => e.target.style.background = '#1a3a9e'}
-            onMouseLeave={e => e.target.style.background = '#2A52BE'}>
-            + 新增 L3 活動
-          </button>
+          <div className="flex items-center gap-2">
+            <select
+              value={sortKey}
+              onChange={e => setSortKey(e.target.value)}
+              className="px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-300">
+              {SORT_OPTIONS.map(o => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+            <button onClick={onNew}
+              className="px-5 py-2 rounded-lg text-white font-medium shadow transition-colors"
+              style={{ background: '#2A52BE' }}
+              onMouseEnter={e => e.target.style.background = '#1a3a9e'}
+              onMouseLeave={e => e.target.style.background = '#2A52BE'}>
+              + 新增 L3 活動
+            </button>
+          </div>
         </div>
 
         {/* Flow list */}
-        {flows.length === 0 ? (
+        {sortedFlows.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-gray-400">
             <div className="text-5xl mb-4">📋</div>
             <p className="text-lg">尚無活動，點選右上角「新增 L3 活動」開始</p>
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {flows.map(flow => (
+            {sortedFlows.map(flow => (
               <div key={flow.id}
                 className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow p-5 flex flex-col gap-3">
                 {/* Header */}
