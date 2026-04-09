@@ -95,16 +95,19 @@ function L3ActivityShape({ task, pos, l4Number }) {
   const { cx, cy } = pos;
   const x = cx - NODE_W / 2;
   const y = cy - NODE_H / 2;
+  const barW = 10; // bookend bar width
   return (
     <>
       <L4Number number={l4Number} cx={cx} y={y} />
-      {/* Outer border */}
+      {/* Main rectangle */}
       <rect x={x} y={y} width={NODE_W} height={NODE_H}
         fill={COLORS.L3_ACTIVITY_FILL} stroke={COLORS.L3_ACTIVITY_STROKE} strokeWidth={1.5} rx={0} />
-      {/* Inner border — the double-border marks this as an L3 Activity reference */}
-      <rect x={x + L3_INSET} y={y + L3_INSET}
-        width={NODE_W - 2 * L3_INSET} height={NODE_H - 2 * L3_INSET}
-        fill="none" stroke={COLORS.L3_ACTIVITY_STROKE} strokeWidth={1} rx={0} />
+      {/* Left bookend bar */}
+      <line x1={x + barW} y1={y} x2={x + barW} y2={y + NODE_H}
+        stroke={COLORS.L3_ACTIVITY_STROKE} strokeWidth={1} />
+      {/* Right bookend bar */}
+      <line x1={x + NODE_W - barW} y1={y} x2={x + NODE_W - barW} y2={y + NODE_H}
+        stroke={COLORS.L3_ACTIVITY_STROKE} strokeWidth={1} />
       <SvgLabel text={task.name} cx={cx} cy={cy} maxChars={7} lineH={14} />
     </>
   );
@@ -270,7 +273,8 @@ function LegendIcon({ type }) {
   if (type === 'l3activity') return (
     <svg width={s} height={s}>
       <rect x={3} y={6} width={30} height={22} fill={COLORS.L3_ACTIVITY_FILL} stroke={COLORS.L3_ACTIVITY_STROKE} strokeWidth={1.5} />
-      <rect x={6} y={9} width={24} height={16} fill="none" stroke={COLORS.L3_ACTIVITY_STROKE} strokeWidth={0.8} />
+      <line x1={11} y1={6} x2={11} y2={28} stroke={COLORS.L3_ACTIVITY_STROKE} strokeWidth={1} />
+      <line x1={25} y1={6} x2={25} y2={28} stroke={COLORS.L3_ACTIVITY_STROKE} strokeWidth={1} />
     </svg>
   );
   if (type === 'arrow') return (
