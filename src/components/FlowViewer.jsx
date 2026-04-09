@@ -1,6 +1,7 @@
 import DiagramRenderer from './DiagramRenderer.jsx';
+import FlowTable from './FlowTable.jsx';
 
-export default function FlowViewer({ flow, onBack, onEdit }) {
+export default function FlowViewer({ flow, onBack, onEdit, onSave }) {
   if (!flow) return null;
   return (
     <div className="min-h-screen" style={{ background: '#F3F4F6' }}>
@@ -15,8 +16,9 @@ export default function FlowViewer({ flow, onBack, onEdit }) {
         </button>
       </header>
 
-      <main className="px-4 py-6 w-full">
+      <main className="px-4 py-6 w-full max-w-full">
         <DiagramRenderer flow={flow} showExport={true} />
+        <FlowTable flow={flow} onSave={onSave} />
       </main>
     </div>
   );

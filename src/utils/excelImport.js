@@ -100,6 +100,13 @@ function buildFlow(rows) {
       type: isGateway ? 'gateway' : 'task',
       roleId,
       ...(isGateway ? { conditions: [] } : { nextTaskIds: [] }),
+      // Preserve original L4 number and metadata fields from Excel
+      l4Number:       l4Num,
+      description:    String(row[4] ?? '').trim(),
+      inputItems:     String(row[5] ?? '').trim(),
+      outputItems:    String(row[7] ?? '').trim(),
+      reference:      String(row[9] ?? '').trim(),
+      flowAnnotation: flowText,
     };
 
     taskByNumber[l4Num] = task;

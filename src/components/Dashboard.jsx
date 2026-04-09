@@ -52,11 +52,21 @@ export default function Dashboard({ flows, onNew, onEdit, onView, onDelete, onIm
     const reader = new FileReader();
     reader.onload = (ev) => {
       try {
-        const flows = parseExcelToFlow(ev.target.result);
-        if (flows.length > 1) {
-          setImportSuccess(`成功匯入 ${flows.length} 個 L3 活動：${flows.map(f => f.l3Number).join('、')}`);
+        const importedFlows = parseExcelToFlow(ev.target.result);
+
+        // Warn if any L3 numbers already exist
+        const existingNums = new Set(flows.map(f => f.l3Number).filter(Boolean));
+        const dupes = importedFlows.filter(f => existingNums.has(f.l3Number)).map(f => f.l3Number);
+        if (dupes.length > 0) {
+          if (!window.confirm(
+            `⚠ 以下 L3 編號已存在於系統中：${dupes.join('、')}\n繼續匯入將新增重複編號的活動，確定要繼續嗎？`
+          )) return;
         }
-        onImportExcel(flows);
+
+        if (importedFlows.length > 1) {
+          setImportSuccess(`成功匯入 ${importedFlows.length} 個 L3 活動：${importedFlows.map(f => f.l3Number).join('、')}`);
+        }
+        onImportExcel(importedFlows);
       } catch (err) {
         setImportError(err.message ?? '解析 Excel 時發生未知錯誤');
       }

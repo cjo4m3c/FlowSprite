@@ -17,17 +17,33 @@ export default function App() {
 
   function handleView(id) { setActiveFlowId(id); setView('view'); }
 
-  function handleSave(flow) { saveFlow(flow); refreshFlows(); setView('dashboard'); }
+  function handleSave(flow) {
+    const duplicate = flows.find(f => f.id !== flow.id && f.l3Number && f.l3Number === flow.l3Number);
+    if (duplicate) {
+      if (!window.confirm(
+        `L3 編號「${flow.l3Number}」已被活動「${duplicate.l3Name}」使用，確定要儲存？\n（建議先修改編號以避免重複）`
+      )) return;
+    }
+    saveFlow(flow);
+    refreshFlows();
+    setView('dashboard');
+  }
 
   function handleDelete(id) { deleteFlow(id); refreshFlows(); }
 
   function handleCancel() { setView('dashboard'); }
 
-  function handleImportExcel(flows) {
-    flows.forEach(f => saveFlow(f));
+  /** Save metadata edits made in FlowTable without leaving the viewer. */
+  function handleViewSave(flow) {
+    saveFlow(flow);
     refreshFlows();
-    if (flows.length === 1) {
-      setActiveFlowId(flows[0].id);
+  }
+
+  function handleImportExcel(importedFlows) {
+    importedFlows.forEach(f => saveFlow(f));
+    refreshFlows();
+    if (importedFlows.length === 1) {
+      setActiveFlowId(importedFlows[0].id);
       setView('view');
     } else {
       setView('dashboard');
@@ -46,6 +62,7 @@ export default function App() {
         flow={activeFlow}
         onBack={handleCancel}
         onEdit={() => handleEdit(activeFlowId)}
+        onSave={handleViewSave}
       />
     );
   }
