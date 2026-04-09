@@ -63,9 +63,36 @@ export function generateFlowAnnotation(task, tasks, l4Map) {
     });
   });
 
+  const ct = task.connectionType;
+
+  if (ct === 'breakpoint' || task.type === 'end') {
+    if (ct === 'breakpoint') {
+      const reason = task.breakpointReason?.trim();
+      return reason ? `【流程斷點：${reason}】` : '【流程斷點】';
+    }
+    return '流程結束';
+  }
+
+  if (ct === 'subprocess') {
+    const subName = task.subprocessName?.trim() || '子流程';
+    const nextId = (task.nextTaskIds || []).find(id => taskById[id]);
+    const nextNum = nextId ? l4Map[nextId] : '';
+    return nextNum ? `調用子流程 ${subName}，返回後序列流向 ${nextNum}` : `調用子流程 ${subName}`;
+  }
+
+  if (ct === 'loop-return') {
+    const conds = task.conditions || [];
+    const c0 = conds[0], c1 = conds[1];
+    const n0 = c0?.nextTaskId ? l4Map[c0.nextTaskId] : '';
+    const n1 = c1?.nextTaskId ? l4Map[c1.nextTaskId] : '';
+    const desc = task.loopDescription?.trim();
+    const base = `條件判斷：若未通過則返回 ${n0}，若通過則序列流向 ${n1}`;
+    return desc ? `${base}（${desc}）` : base;
+  }
+
   if (task.type === 'end') return '流程結束';
 
-  if (task.type === 'start') {
+  if (ct === 'start' || task.type === 'start') {
     const nexts = (task.nextTaskIds || [])
       .filter(id => taskById[id])
       .map(id => l4Map[id]).filter(Boolean);
@@ -75,7 +102,23 @@ export function generateFlowAnnotation(task, tasks, l4Map) {
   if (task.type === 'gateway') {
     const conds = task.conditions || [];
     const isMergeNode = (incomingCount[task.id] || 0) > 1 && conds.length <= 1;
+    const gType = task.gatewayType || 'xor';
 
+    const outNums = conds.map(c => {
+      if (!c.nextTaskId || !taskById[c.nextTaskId]) return null;
+      return l4Map[c.nextTaskId] || null;
+    }).filter(Boolean);
+
+    if (gType === 'and') {
+      // AND join: single outgoing
+      if (isMergeNode && outNums.length === 1) {
+        return `並行合併來自多個分支，序列流向 ${outNums[0]}`;
+      }
+      // AND fork: parallel branches
+      return outNums.length ? `並行分支至 ${outNums.join('、')}` : '';
+    }
+
+    // XOR / OR gateway
     const outParts = conds.map(c => {
       if (!c.nextTaskId || !taskById[c.nextTaskId]) return null;
       if (taskById[c.nextTaskId].type === 'end') {
@@ -96,7 +139,7 @@ export function generateFlowAnnotation(task, tasks, l4Map) {
   const nexts = (task.nextTaskIds || []).filter(id => taskById[id]);
   if (nexts.length === 0) return '';
 
-  const toOther = nexts.filter(id => taskById[id].type !== 'end');
+  const toOther = nexts.filter(id => taskById[id].type !== 'end' && taskById[id].connectionType !== 'end' && taskById[id].connectionType !== 'breakpoint');
   if (toOther.length === 0) return '流程結束';
 
   if (nexts.length === 1) {
