@@ -95,16 +95,19 @@ function L3ActivityShape({ task, pos, l4Number }) {
   const { cx, cy } = pos;
   const x = cx - NODE_W / 2;
   const y = cy - NODE_H / 2;
+  const barW = 10; // bookend bar width
   return (
     <>
       <L4Number number={l4Number} cx={cx} y={y} />
-      {/* Outer border */}
+      {/* Main rectangle */}
       <rect x={x} y={y} width={NODE_W} height={NODE_H}
         fill={COLORS.L3_ACTIVITY_FILL} stroke={COLORS.L3_ACTIVITY_STROKE} strokeWidth={1.5} rx={0} />
-      {/* Inner border — the double-border marks this as an L3 Activity reference */}
-      <rect x={x + L3_INSET} y={y + L3_INSET}
-        width={NODE_W - 2 * L3_INSET} height={NODE_H - 2 * L3_INSET}
-        fill="none" stroke={COLORS.L3_ACTIVITY_STROKE} strokeWidth={1} rx={0} />
+      {/* Left bookend bar */}
+      <line x1={x + barW} y1={y} x2={x + barW} y2={y + NODE_H}
+        stroke={COLORS.L3_ACTIVITY_STROKE} strokeWidth={1} />
+      {/* Right bookend bar */}
+      <line x1={x + NODE_W - barW} y1={y} x2={x + NODE_W - barW} y2={y + NODE_H}
+        stroke={COLORS.L3_ACTIVITY_STROKE} strokeWidth={1} />
       <SvgLabel text={task.name} cx={cx} cy={cy} maxChars={7} lineH={14} />
     </>
   );
@@ -114,11 +117,37 @@ function GatewayShape({ task, pos, l4Number }) {
   const { cx, cy } = pos;
   const d = DIAMOND_SIZE;
   const pts = `${cx},${cy - d} ${cx + d},${cy} ${cx},${cy + d} ${cx - d},${cy}`;
+  const gType = task.gatewayType || 'xor';
+  const sym = d * 0.42; // symbol half-size
+
+  let symbol = null;
+  if (gType === 'xor') {
+    // X cross
+    symbol = (
+      <g>
+        <line x1={cx - sym} y1={cy - sym} x2={cx + sym} y2={cy + sym} stroke={COLORS.GATEWAY_STROKE} strokeWidth={2} />
+        <line x1={cx + sym} y1={cy - sym} x2={cx - sym} y2={cy + sym} stroke={COLORS.GATEWAY_STROKE} strokeWidth={2} />
+      </g>
+    );
+  } else if (gType === 'and') {
+    // + cross
+    symbol = (
+      <g>
+        <line x1={cx} y1={cy - sym} x2={cx} y2={cy + sym} stroke={COLORS.GATEWAY_STROKE} strokeWidth={2} />
+        <line x1={cx - sym} y1={cy} x2={cx + sym} y2={cy} stroke={COLORS.GATEWAY_STROKE} strokeWidth={2} />
+      </g>
+    );
+  } else {
+    // OR: circle
+    symbol = <circle cx={cx} cy={cy} r={sym * 0.9} fill="none" stroke={COLORS.GATEWAY_STROKE} strokeWidth={1.5} />;
+  }
+
   return (
     <>
       <L4Number number={l4Number} cx={cx} y={cy - d} />
       <polygon points={pts} fill={COLORS.GATEWAY_FILL} stroke={COLORS.GATEWAY_STROKE} strokeWidth={1.2} />
-      <SvgLabel text={task.name} cx={cx} cy={cy} maxChars={5} lineH={13} fontSize={10.5} />
+      {symbol}
+      <SvgLabel text={task.name} cx={cx} cy={cy + d + 10} maxChars={6} lineH={13} fontSize={10.5} />
     </>
   );
 }
@@ -144,9 +173,6 @@ function ConnectionArrow({ conn, positions }) {
   const pts = routeArrow(from, to, conn.exitSide, conn.entrySide, conn.laneBottomY);
   const pointsStr = pts.map(p => `${p[0]},${p[1]}`).join(' ');
 
-  // Place label at midpoint of the 2nd segment (pts[1]→pts[2]) for paths with ≥3 points,
-  // or at the midpoint of the whole line for 2-point paths.
-  // This keeps the label away from the arrowhead (which is at the final endpoint).
   const labelPt = pts.length >= 3
     ? [(pts[1][0] + pts[2][0]) / 2, (pts[1][1] + pts[2][1]) / 2]
     : [(pts[0][0] + pts[pts.length - 1][0]) / 2, (pts[0][1] + pts[pts.length - 1][1]) / 2];
@@ -172,13 +198,15 @@ function ConnectionArrow({ conn, positions }) {
 
 function LegendSection() {
   const items = [
-    { shape: 'start',      label: '活動起點' },
-    { shape: 'end',        label: '活動終點' },
-    { shape: 'task',       label: 'L4 任務' },
-    { shape: 'interaction',label: '外部關係人互動' },
-    { shape: 'gateway',    label: '判斷框' },
-    { shape: 'l3activity', label: 'L3 活動（關聯）' },
-    { shape: 'arrow',      label: '順序流' },
+    { shape: 'start',       label: '活動起點' },
+    { shape: 'end',         label: '活動終點' },
+    { shape: 'task',        label: 'L4 任務' },
+    { shape: 'interaction', label: '外部關係人互動' },
+    { shape: 'gateway-xor', label: '排他閘道 (XOR)' },
+    { shape: 'gateway-and', label: '並行閘道 (AND)' },
+    { shape: 'gateway-or',  label: '包容閘道 (OR)' },
+    { shape: 'l3activity',  label: 'L3 活動（關聯）' },
+    { shape: 'arrow',       label: '順序流' },
   ];
 
   return (
@@ -211,13 +239,39 @@ function LegendIcon({ type }) {
   if (type === 'interaction') return (
     <svg width={s} height={s}><rect x={3} y={8} width={30} height={20} fill={COLORS.INTERACTION_FILL} stroke={COLORS.TASK_STROKE} strokeWidth={1.2} rx={2} /></svg>
   );
-  if (type === 'gateway') return (
-    <svg width={s} height={s}><polygon points={`${c},4 ${s-4},${c} ${c},${s-4} 4,${c}`} fill={COLORS.GATEWAY_FILL} stroke={COLORS.GATEWAY_STROKE} strokeWidth={1.2} /></svg>
-  );
+  if (type === 'gateway-xor') {
+    const sym = 6;
+    return (
+      <svg width={s} height={s}>
+        <polygon points={`${c},4 ${s-4},${c} ${c},${s-4} 4,${c}`} fill={COLORS.GATEWAY_FILL} stroke={COLORS.GATEWAY_STROKE} strokeWidth={1.2} />
+        <line x1={c-sym} y1={c-sym} x2={c+sym} y2={c+sym} stroke={COLORS.GATEWAY_STROKE} strokeWidth={1.8} />
+        <line x1={c+sym} y1={c-sym} x2={c-sym} y2={c+sym} stroke={COLORS.GATEWAY_STROKE} strokeWidth={1.8} />
+      </svg>
+    );
+  }
+  if (type === 'gateway-and') {
+    const sym = 6;
+    return (
+      <svg width={s} height={s}>
+        <polygon points={`${c},4 ${s-4},${c} ${c},${s-4} 4,${c}`} fill={COLORS.GATEWAY_FILL} stroke={COLORS.GATEWAY_STROKE} strokeWidth={1.2} />
+        <line x1={c} y1={c-sym} x2={c} y2={c+sym} stroke={COLORS.GATEWAY_STROKE} strokeWidth={1.8} />
+        <line x1={c-sym} y1={c} x2={c+sym} y2={c} stroke={COLORS.GATEWAY_STROKE} strokeWidth={1.8} />
+      </svg>
+    );
+  }
+  if (type === 'gateway-or') {
+    return (
+      <svg width={s} height={s}>
+        <polygon points={`${c},4 ${s-4},${c} ${c},${s-4} 4,${c}`} fill={COLORS.GATEWAY_FILL} stroke={COLORS.GATEWAY_STROKE} strokeWidth={1.2} />
+        <circle cx={c} cy={c} r={6} fill="none" stroke={COLORS.GATEWAY_STROKE} strokeWidth={1.5} />
+      </svg>
+    );
+  }
   if (type === 'l3activity') return (
     <svg width={s} height={s}>
       <rect x={3} y={6} width={30} height={22} fill={COLORS.L3_ACTIVITY_FILL} stroke={COLORS.L3_ACTIVITY_STROKE} strokeWidth={1.5} />
-      <rect x={6} y={9} width={24} height={16} fill="none" stroke={COLORS.L3_ACTIVITY_STROKE} strokeWidth={0.8} />
+      <line x1={11} y1={6} x2={11} y2={28} stroke={COLORS.L3_ACTIVITY_STROKE} strokeWidth={1} />
+      <line x1={25} y1={6} x2={25} y2={28} stroke={COLORS.L3_ACTIVITY_STROKE} strokeWidth={1} />
     </svg>
   );
   if (type === 'arrow') return (
@@ -230,7 +284,6 @@ function LegendIcon({ type }) {
 }
 
 export default function DiagramRenderer({ flow, showExport = true }) {
-  // exportRef wraps just the SVG element so toPng captures the full diagram, not the scroll window
   const exportRef = useRef(null);
 
   if (!flow || !flow.roles?.length || !flow.tasks?.length) {
@@ -285,17 +338,13 @@ export default function DiagramRenderer({ flow, showExport = true }) {
         </div>
       )}
 
-      {/* Scroll container for viewing — does not affect export */}
       <div className="overflow-auto border border-gray-300 rounded-lg bg-white w-full">
-        {/* exportRef wraps just the SVG so export is full-size */}
         <div ref={exportRef} style={{ display: 'inline-block', background: '#fff' }}>
         <svg width={svgWidth} height={svgHeight} xmlns="http://www.w3.org/2000/svg">
           <ArrowMarkers />
 
-          {/* Background */}
           <rect x={0} y={0} width={svgWidth} height={svgHeight} fill="#FFFFFF" />
 
-          {/* Title bar */}
           <rect x={0} y={0} width={svgWidth} height={TITLE_H} fill={COLORS.TITLE_BG} />
           <text x={svgWidth / 2} y={TITLE_H / 2} textAnchor="middle" dominantBaseline="middle"
             fill={COLORS.TITLE_TEXT} fontSize={16} fontWeight="bold"
@@ -303,7 +352,6 @@ export default function DiagramRenderer({ flow, showExport = true }) {
             {flow.l3Number}　{flow.l3Name}　— 業務活動泳道圖
           </text>
 
-          {/* Lane headers and bodies */}
           {flow.roles.map((role, i) => {
             const headerBg = role.type === 'external' ? COLORS.EXTERNAL_BG : COLORS.INTERNAL_BG;
             const laneY = laneTopY[i];
@@ -311,12 +359,9 @@ export default function DiagramRenderer({ flow, showExport = true }) {
             const laneBg = i % 2 === 0 ? COLORS.LANE_ODD : COLORS.LANE_EVEN;
             return (
               <g key={role.id}>
-                {/* Lane body */}
                 <rect x={LANE_HEADER_W} y={laneY} width={svgWidth - LANE_HEADER_W} height={laneH}
                   fill={laneBg} />
-                {/* Header */}
                 <rect x={0} y={laneY} width={LANE_HEADER_W} height={laneH} fill={headerBg} />
-                {/* Role name — centered in the header (uses dynamic lane height) */}
                 {wrapText(role.name, 5).map((line, li) => {
                   const lineH = 16;
                   const total = (wrapText(role.name, 5).length - 1) * lineH;
@@ -329,23 +374,19 @@ export default function DiagramRenderer({ flow, showExport = true }) {
                     </text>
                   );
                 })}
-                {/* Lane bottom border */}
                 <line x1={0} y1={laneY + laneH} x2={svgWidth} y2={laneY + laneH}
                   stroke={COLORS.LANE_BORDER} strokeWidth={1} />
               </g>
             );
           })}
 
-          {/* Vertical header border */}
           <line x1={LANE_HEADER_W} y1={TITLE_H} x2={LANE_HEADER_W} y2={svgHeight}
             stroke={COLORS.LANE_BORDER} strokeWidth={1.5} />
 
-          {/* Connections (rendered below shapes) */}
           {connections.map((conn, i) => (
             <ConnectionArrow key={i} conn={conn} positions={positions} />
           ))}
 
-          {/* Shapes */}
           {flow.tasks.map(task => {
             const pos = positions[task.id];
             const num = l4Numbers[task.id];
@@ -357,8 +398,8 @@ export default function DiagramRenderer({ flow, showExport = true }) {
             return <TaskShape key={task.id} task={task} pos={pos} l4Number={num} />;
           })}
         </svg>
-        </div>{/* end exportRef wrapper */}
-      </div>{/* end scroll container */}
+        </div>
+      </div>
 
       <LegendSection />
     </div>
