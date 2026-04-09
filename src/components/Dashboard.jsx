@@ -78,9 +78,15 @@ export default function Dashboard({ flows, onNew, onEdit, onView, onDelete, onIm
   return (
     <div className="min-h-screen" style={{ background: '#F3F4F6' }}>
       {/* Top bar */}
-      <header className="px-6 py-3 shadow-md flex items-center gap-4" style={{ background: '#4A5240', color: 'white' }}>
+           <header className="px-6 py-3 shadow-md flex items-center gap-4" style={{ background: '#4A5240', color: 'white' }}>
+        <img
+          src={`${import.meta.env.BASE_URL}logo.png`}
+          alt="FlowSprite Logo"
+          className="h-9 w-9 rounded-full object-cover flex-shrink-0"
+          onError={e => { e.currentTarget.style.display = 'none'; }}
+        />
         <span className="text-lg font-bold tracking-wide">FlowSprite</span>
-        <span className="text-xs opacity-60">BPM Flow Designer</span>
+
         <div className="ml-auto flex gap-2">
           <ChangelogPanel />
           <HelpPanel />
