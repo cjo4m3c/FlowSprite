@@ -9,6 +9,16 @@ import { useState } from 'react';
  */
 
 const CHANGELOG = [
+    {
+    date: '2026-04-09',
+    title: 'Logo 新增、規則更新與部署確認',
+    items: [
+      '左上角標題列新增 FlowSprite 品牌 Logo 圖示（圓形，自動隱藏若圖片尚未上傳）',
+      '規則說明（HelpPanel）完整更新：8 種元件、10 種 BPMN 連接類型、7 條驗證規則',
+      '精靈（Wizard）10 種流程設定類型確認部署至正式環境',
+    ],
+  },
+
   {
     date: '2026-04-09',
     title: '系統更名為 FlowSprite',
