@@ -173,13 +173,19 @@ const EXPORTS = [
     format: 'PNG',
     ext: '.png',
     tool: '任何圖片檢視器、Word、PowerPoint',
-    note: '一鍵匯出，高解析度。不可再編輯節點。',
+    note: '高解析度圖片，不可再編輯節點。可從流程編輯頁上方按鈕匯出，或直接在首頁卡片點「↓ PNG」下載。',
   },
   {
     format: 'Draw.io',
     ext: '.drawio',
     tool: 'diagrams.net（免費線上 / 桌面版）或 VS Code Draw.io 擴充',
-    note: '可重新編輯節點、調整版面。以 mxGraph XML 格式儲存。',
+    note: '可重新編輯節點、調整版面，以 mxGraph XML 格式儲存。可從流程編輯頁上方按鈕匯出，或直接在首頁卡片點「↓ draw.io」下載。',
+  },
+  {
+    format: 'Excel',
+    ext: '.xlsx',
+    tool: 'Microsoft Excel、LibreOffice Calc、Google Sheets',
+    note: '包含 L4 任務明細共 10 欄（L3 編號、L3 名稱、L4 編號、任務名稱、說明、輸入、角色、產出、關聯說明、參考資料）。可在「詳細 Excel 清單」頁籤下載，或直接在首頁卡片點「↓ Excel」下載。',
   },
 ];
 
@@ -269,7 +275,7 @@ export default function HelpPanel() {
 
               {/* ── 3. Validation ── */}
               <Section title="驗證規則 Validation">
-                <p className="text-xs text-gray-400 mb-2">下列條件不滿足時，無法從「L4 任務」步驟前進至「圖表預覽」</p>
+                <p className="text-xs text-gray-400 mb-2">下列條件不滿足時，新增活動精靈中無法前進至「圖表預覽」步驟（既有活動可直接在編輯頁儲存）</p>
                 <div className="grid gap-2">
                   {VALIDATION.map((v, i) => (
                     <div key={i} className="flex gap-3 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
