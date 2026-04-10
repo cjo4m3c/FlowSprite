@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useEffect } from 'react';
 import { toPng } from 'html-to-image';
 import { computeLayout, routeArrow } from '../diagram/layout.js';
 import { LAYOUT, COLORS } from '../diagram/constants.js';
@@ -285,6 +285,22 @@ function LegendIcon({ type }) {
 
 export default function DiagramRenderer({ flow, showExport = true }) {
   const exportRef = useRef(null);
+  export default function DiagramRenderer({ flow, showExport = true, autoExportPng = false, onExportDone = null }) {
+  const exportRef = useRef(null);
+
+  useEffect(() => {
+    if (!autoExportPng || !exportRef.current) return;
+    toPng(exportRef.current, { pixelRatio: 2, backgroundColor: '#ffffff' })
+      .then(dataUrl => {
+        const a = document.createElement('a');
+        a.download = `${flow.l3Number}-${flow.l3Name}.png`;
+        a.href = dataUrl;
+        a.click();
+      })
+      .catch(e => console.error('PNG 匯出失敗', e))
+      .finally(() => onExportDone?.());
+  }, [autoExportPng]);
+
 
   if (!flow || !flow.roles?.length || !flow.tasks?.length) {
     return (
