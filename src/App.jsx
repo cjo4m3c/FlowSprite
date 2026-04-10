@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import Dashboard from './components/Dashboard.jsx';
 import Wizard from './components/Wizard.jsx';
-import FlowViewer from './components/FlowViewer.jsx';
+import FlowEditor from './components/FlowEditor.jsx';
 import { loadFlows, saveFlow, deleteFlow } from './utils/storage.js';
 
 export default function App() {
@@ -26,15 +26,23 @@ export default function App() {
     }
     saveFlow(flow);
     refreshFlows();
-    setView('dashboard');
+    // After saving from Wizard, go to FlowEditor so user can see diagram immediately
+    setActiveFlowId(flow.id);
+    setView('view');
   }
 
   function handleDelete(id) { deleteFlow(id); refreshFlows(); }
 
   function handleCancel() { setView('dashboard'); }
 
-  /** Save metadata edits made in FlowTable without leaving the viewer. */
+  /** Save edits made in FlowEditor without leaving the page. */
   function handleViewSave(flow) {
+    const duplicate = flows.find(f => f.id !== flow.id && f.l3Number && f.l3Number === flow.l3Number);
+    if (duplicate) {
+      if (!window.confirm(
+        `L3 編號「${flow.l3Number}」已被活動「${duplicate.l3Name}」使用，確定要儲存？`
+      )) return;
+    }
     saveFlow(flow);
     refreshFlows();
   }
@@ -58,10 +66,9 @@ export default function App() {
 
   if (view === 'view') {
     return (
-      <FlowViewer
+      <FlowEditor
         flow={activeFlow}
         onBack={handleCancel}
-        onEdit={() => handleEdit(activeFlowId)}
         onSave={handleViewSave}
       />
     );
