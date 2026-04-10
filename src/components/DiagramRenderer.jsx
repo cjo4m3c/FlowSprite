@@ -285,21 +285,6 @@ function LegendIcon({ type }) {
 
 export default function DiagramRenderer({ flow, showExport = true, autoExportPng = false, onExportDone = null }) {
   const exportRef = useRef(null);
-    useEffect(() => {
-    if (!autoExportPng || !exportRef.current) return;
-    toPng(exportRef.current, { pixelRatio: 2, backgroundColor: '#ffffff' })
-      .then(dataUrl => {
-        const a = document.createElement('a');
-        a.download = `${flow.l3Number}-${flow.l3Name}.png`;
-        a.href = dataUrl;
-        a.click();
-      })
-      .catch(e => console.error('PNG 匯出失敗', e))
-      .finally(() => onExportDone?.());
-  }, [autoExportPng]);
-
-  export default function DiagramRenderer({ flow, showExport = true, autoExportPng = false, onExportDone = null }) {
-  const exportRef = useRef(null);
 
   useEffect(() => {
     if (!autoExportPng || !exportRef.current) return;
@@ -313,7 +298,6 @@ export default function DiagramRenderer({ flow, showExport = true, autoExportPng
       .catch(e => console.error('PNG 匯出失敗', e))
       .finally(() => onExportDone?.());
   }, [autoExportPng]);
-
 
   if (!flow || !flow.roles?.length || !flow.tasks?.length) {
     return (
