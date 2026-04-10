@@ -176,55 +176,6 @@ function TaskCard({ task, roles, allTasks, displayLabels, onUpdate, onRemove, ca
   );
 }
 
-// ── RolesEditor ───────────────────────────────────────────────────
-function RolesEditor({ roles, onChange }) {
-  const [open, setOpen] = useState(false);
-
-  function addRole() { onChange([...roles, makeRole()]); }
-  function removeRole(id) {
-    if (roles.length <= 1) return;
-    onChange(roles.filter(r => r.id !== id));
-  }
-  function updateRole(id, field, val) {
-    onChange(roles.map(r => r.id === id ? { ...r, [field]: val } : r));
-  }
-
-  return (
-    <div className="mb-4 border border-gray-200 rounded-lg overflow-hidden">
-      <button
-        onClick={() => setOpen(v => !v)}
-        className="w-full flex items-center justify-between px-4 py-2.5 bg-gray-50 hover:bg-gray-100 transition-colors text-sm font-medium text-gray-700">
-        <span>泳道角色設定（{roles.filter(r => r.name).length} 個角色）</span>
-        <span className="text-gray-400">{open ? '▲' : '▼'}</span>
-      </button>
-      {open && (
-        <div className="p-3 flex flex-col gap-2">
-          {roles.map((role, i) => (
-            <div key={role.id} className="flex items-center gap-2">
-              <span className="text-xs text-gray-400 w-5 flex-shrink-0">#{i + 1}</span>
-              <input type="text" placeholder="角色名稱" value={role.name}
-                onChange={e => updateRole(role.id, 'name', e.target.value)}
-                className="flex-1 px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-400" />
-              <select value={role.type} onChange={e => updateRole(role.id, 'type', e.target.value)}
-                className="px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none"
-                style={{ background: role.type === 'external' ? '#16982B' : '#2A52BE', color: 'white' }}>
-                <option value="internal">內部</option>
-                <option value="external">外部</option>
-              </select>
-              <button onClick={() => removeRole(role.id)} disabled={roles.length <= 1}
-                className="text-red-400 hover:text-red-600 disabled:opacity-20 text-lg leading-none">✕</button>
-            </div>
-          ))}
-          <button onClick={addRole}
-            className="mt-1 py-1.5 text-sm border border-dashed border-blue-400 text-blue-600 rounded hover:bg-blue-50 transition-colors">
-            + 新增角色
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ── Main FlowEditor ───────────────────────────────────────────────
 export default function FlowEditor({ flow, onBack, onSave }) {
   const [liveFlow, setLiveFlow] = useState(() => ({
@@ -235,7 +186,7 @@ export default function FlowEditor({ flow, onBack, onSave }) {
     }),
   }));
   const [hasChanges, setHasChanges] = useState(false);
-  const [showTable, setShowTable] = useState(false);
+  const [activeTab, setActiveTab] = useState('flow'); // 'flow' | 'table' | 'roles'
 
   const displayLabels = useMemo(
     () => computeDisplayLabels(liveFlow.tasks, liveFlow.l3Number),
@@ -310,50 +261,96 @@ export default function FlowEditor({ flow, onBack, onSave }) {
       </header>
 
       <main className="px-4 py-6 w-full max-w-full">
+        {/* Diagram — always visible */}
         <DiagramRenderer flow={liveFlow} showExport={true} />
 
-        <div className="mt-6">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-base font-semibold text-gray-700">L4 任務編輯</h3>
-            <span className="text-xs text-gray-400">▼ 展開任務可編輯說明、輸入、產出等欄位</span>
-          </div>
-
-          <RolesEditor roles={liveFlow.roles || []} onChange={roles => patch({ roles })} />
-
-          <div className="flex flex-col gap-2">
-            {liveFlow.tasks.map((task, i) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                roles={liveFlow.roles || []}
-                allTasks={liveFlow.tasks}
-                displayLabels={displayLabels}
-                onUpdate={updated => updateTask(task.id, updated)}
-                onRemove={() => removeTask(task.id)}
-                canRemove={liveFlow.tasks.length > 1}
-                dragHandlers={rowProps(i)}
-                isDragging={dragIdx === i}
-                isOver={overIdx === i && dragIdx !== i}
-              />
+        {/* Tabs */}
+        <div className="mt-6 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          {/* Tab bar */}
+          <div className="flex border-b border-gray-200">
+            {[
+              { key: 'flow',  label: '設定流程' },
+              { key: 'table', label: '詳細 Excel 清單' },
+              { key: 'roles', label: '設定泳道角色' },
+            ].map(tab => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === tab.key
+                    ? 'border-blue-600 text-blue-700 bg-blue-50'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                }`}>
+                {tab.label}
+              </button>
             ))}
           </div>
 
-          <button onClick={addTask}
-            className="mt-3 w-full py-2 text-sm border border-dashed border-blue-400 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors">
-            + 新增任務
-          </button>
-        </div>
+          {/* Tab: 設定流程 */}
+          {activeTab === 'flow' && (
+            <div className="p-4">
+              <p className="text-xs text-gray-400 mb-3">▼ 點任務右側箭頭可展開說明、輸入、產出欄位</p>
+              <div className="flex flex-col gap-2">
+                {liveFlow.tasks.map((task, i) => (
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    roles={liveFlow.roles || []}
+                    allTasks={liveFlow.tasks}
+                    displayLabels={displayLabels}
+                    onUpdate={updated => updateTask(task.id, updated)}
+                    onRemove={() => removeTask(task.id)}
+                    canRemove={liveFlow.tasks.length > 1}
+                    dragHandlers={rowProps(i)}
+                    isDragging={dragIdx === i}
+                    isOver={overIdx === i && dragIdx !== i}
+                  />
+                ))}
+              </div>
+              <button onClick={addTask}
+                className="mt-3 w-full py-2 text-sm border border-dashed border-blue-400 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors">
+                + 新增任務
+              </button>
+            </div>
+          )}
 
-        <div className="mt-6 border border-gray-200 rounded-lg overflow-hidden">
-          <button
-            onClick={() => setShowTable(v => !v)}
-            className="w-full flex items-center justify-between px-4 py-2.5 bg-gray-50 hover:bg-gray-100 transition-colors text-sm font-medium text-gray-700">
-            <span>Excel 詳細欄位（說明、輸入、產出、參考文件）</span>
-            <span className="text-gray-400">{showTable ? '▲ 收合' : '▼ 展開'}</span>
-          </button>
-          {showTable && (
+          {/* Tab: 詳細 Excel 清單 */}
+          {activeTab === 'table' && (
             <div className="p-4">
               <FlowTable flow={liveFlow} onSave={handleTableSave} />
+            </div>
+          )}
+
+          {/* Tab: 設定泳道角色 */}
+          {activeTab === 'roles' && (
+            <div className="p-4">
+              <p className="text-sm text-gray-500 mb-3">設定流程中的參與角色，變更後請點右上角「儲存」</p>
+              <div className="flex flex-col gap-2">
+                {(liveFlow.roles || []).map((role, i) => (
+                  <div key={role.id} className="flex items-center gap-2">
+                    <span className="text-xs text-gray-400 w-5 flex-shrink-0">#{i + 1}</span>
+                    <input type="text" placeholder="角色名稱" value={role.name}
+                      onChange={e => patch({ roles: liveFlow.roles.map(r => r.id === role.id ? { ...r, name: e.target.value } : r) })}
+                      className="flex-1 px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-400" />
+                    <select value={role.type}
+                      onChange={e => patch({ roles: liveFlow.roles.map(r => r.id === role.id ? { ...r, type: e.target.value } : r) })}
+                      className="px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none"
+                      style={{ background: role.type === 'external' ? '#16982B' : '#2A52BE', color: 'white' }}>
+                      <option value="internal">內部角色</option>
+                      <option value="external">外部角色</option>
+                    </select>
+                    <button
+                      onClick={() => { if (liveFlow.roles.length > 1) patch({ roles: liveFlow.roles.filter(r => r.id !== role.id) }); }}
+                      disabled={liveFlow.roles.length <= 1}
+                      className="text-red-400 hover:text-red-600 disabled:opacity-20 text-lg leading-none">✕</button>
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={() => patch({ roles: [...(liveFlow.roles || []), makeRole()] })}
+                className="mt-3 w-full py-2 text-sm border border-dashed border-blue-400 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors">
+                + 新增角色
+              </button>
             </div>
           )}
         </div>
