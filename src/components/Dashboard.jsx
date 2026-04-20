@@ -208,7 +208,7 @@ export default function Dashboard({ flows, onNew, onEdit, onView, onDelete, onIm
         {importError && (
           <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700 flex items-start gap-2">
             <span className="flex-shrink-0 font-bold">!</span>
-            <span>{importError}</span>
+            <span className="whitespace-pre-line flex-1">{importError}</span>
             <button onClick={() => setImportError('')} className="ml-auto text-red-400 hover:text-red-600 font-bold">×</button>
           </div>
         )}
