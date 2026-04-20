@@ -8,7 +8,8 @@
 ## 1. 儲存庫與分支
 
 - **GitHub repo**：`cjo4m3c/FlowSprite`
-- **開發分支**：`claude/push-swimlane-files-Jd8k1`（所有修改都推到此分支）
+- **工作流程**：每個功能從最新 `main` 切新分支（例如 `claude/<feature-name>`）→ push → 開 PR → **squash merge** 到 `main`；`main` push 會觸發 `.github/workflows/deploy.yml` 自動部署 GitHub Pages
+- **部署網址**：`https://cjo4m3c.github.io/FlowSprite/`
 - **MCP scope**：GitHub MCP tools 僅允許 `cjo4m3c/flowsprite`；不得操作其他 repo
 
 ## 2. Git 推送規則
@@ -25,10 +26,13 @@
 
 ## 3. L3 / L4 編號格式（核心業務規則）
 
-- **L3 編號**：`1-1-1`（三層橫線分隔）
-- **L4 編號**：`1-1-1-1`（L3 編號 + `-` + 序號）
-- 格式驗證 regex 同時相容點與橫線：`/^\d+([.-]\d+)*$/`
-- Excel 匯入：若原始資料用點分隔，系統自動正規化為橫線
+- **L3 編號**：`1-1-1`（三層橫線分隔，恰好 3 段）
+- **L4 編號**：`1-1-1-1`（L3 編號 + `-` + 序號，恰好 4 段）
+- 格式驗證 regex 的**單一來源**在 `src/utils/taskDefs.js`（相容點與橫線）：
+  - `L3_NUMBER_PATTERN = /^\d+[.-]\d+[.-]\d+$/`
+  - `L4_NUMBER_PATTERN = /^\d+[.-]\d+[.-]\d+[.-]\d+$/`
+  - **編號規則若變更，只改這兩個常數**；其他檔案透過 import 引用
+- Excel 匯入：上傳前用 `validateNumbering` 逐列檢核（`excelImport.js`），不合會列出所有錯誤列；原始資料用點分隔時系統自動正規化為橫線
 - 所有新範例、placeholder、錯誤訊息都必須使用橫線格式
 - 已套用此規則的位置：
   - `src/utils/excelImport.js`：`normalizeL3Number` (commit 4ef7d66)
