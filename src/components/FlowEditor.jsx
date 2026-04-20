@@ -7,7 +7,7 @@
  *   1. From scratch (via Wizard → redirected here after save)
  *   2. From Excel import (opened directly in view/edit mode)
  */
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import DiagramRenderer from './DiagramRenderer.jsx';
 import ConnectionSection from './ConnectionSection.jsx';
 import FlowTable from './FlowTable.jsx';
@@ -19,7 +19,7 @@ import {
 } from '../utils/taskDefs.js';
 import { generateId } from '../utils/storage.js';
 
-// ── Drag-and-drop hook (same as Wizard) ──────────────────────────
+// ── Drag-and-drop hook (same as Wizard) ──────────────────────
 function useDragReorder(items, onReorder) {
   const [dragIdx, setDragIdx] = useState(null);
   const [overIdx, setOverIdx] = useState(null);
@@ -52,7 +52,7 @@ function useDragReorder(items, onReorder) {
   return { dragIdx, overIdx, rowProps };
 }
 
-// ── DragHandle ────────────────────────────────────────────────────
+// ── DragHandle ──────────────────────────────────────────────
 function DragHandle() {
   return (
     <div className="flex items-center justify-center w-5 flex-shrink-0 cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 select-none">
@@ -65,7 +65,7 @@ function DragHandle() {
   );
 }
 
-// ── TaskCard ──────────────────────────────────────────────────────
+// ── TaskCard ────────────────────────────────────────────────
 function TaskCard({ task, roles, allTasks, displayLabels, onUpdate, onRemove, canRemove, dragHandlers, isDragging, isOver }) {
   const ct = task.connectionType || 'sequence';
   const badge = CONN_BADGE[ct];
@@ -176,7 +176,7 @@ function TaskCard({ task, roles, allTasks, displayLabels, onUpdate, onRemove, ca
   );
 }
 
-// ── Main FlowEditor ───────────────────────────────────────────────
+// ── Main FlowEditor ────────────────────────────────────────
 export default function FlowEditor({ flow, onBack, onSave }) {
   const [liveFlow, setLiveFlow] = useState(() => ({
     ...flow,
@@ -187,6 +187,13 @@ export default function FlowEditor({ flow, onBack, onSave }) {
   }));
   const [hasChanges, setHasChanges] = useState(false);
   const [activeTab, setActiveTab] = useState('flow'); // 'flow' | 'table' | 'roles'
+  const [logoReaction, setLogoReaction] = useState(null); // 'wave' | null
+
+  useEffect(() => {
+    if (!logoReaction) return;
+    const timer = setTimeout(() => setLogoReaction(null), 900);
+    return () => clearTimeout(timer);
+  }, [logoReaction]);
 
   const displayLabels = useMemo(
     () => computeDisplayLabels(liveFlow.tasks, liveFlow.l3Number),
@@ -220,12 +227,14 @@ export default function FlowEditor({ flow, onBack, onSave }) {
   function handleSave() {
     onSave(liveFlow);
     setHasChanges(false);
+    setLogoReaction('wave');
   }
 
   function handleTableSave(updatedFlow) {
     setLiveFlow(updatedFlow);
     onSave(updatedFlow);
     setHasChanges(false);
+    setLogoReaction('wave');
   }
 
   return (
@@ -233,6 +242,12 @@ export default function FlowEditor({ flow, onBack, onSave }) {
       <header className="px-6 py-3 shadow-md flex items-center gap-4 sticky top-0 z-10"
         style={{ background: '#4A5240', color: 'white' }}>
         <button onClick={onBack} className="opacity-70 hover:opacity-100 text-sm flex-shrink-0">← 返回</button>
+        <img
+          src={`${import.meta.env.BASE_URL}logo.png`}
+          alt="FlowSprite Logo"
+          className={`h-9 w-9 rounded-full object-cover flex-shrink-0 logo-happy ${logoReaction ? `logo-${logoReaction}` : ''}`}
+          onError={e => { e.currentTarget.style.display = 'none'; }}
+        />
         <div className="flex items-center gap-2 min-w-0">
           <input
             value={liveFlow.l3Number || ''}
