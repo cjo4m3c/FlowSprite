@@ -112,7 +112,7 @@ function Step1({ data, onChange }) {
 
   function handleNumber(val) {
     onChange({ l3Number: val });
-    setNumErr(val && !/^\d+(\.\d+)*$/.test(val) ? '格式錯誤，範例：1.1.1' : '');
+    setNumErr(val && !/^\d+([.-]\d+)*$/.test(val) ? '格式錯誤，範例：1-1-1' : '');
   }
 
   return (
@@ -122,11 +122,11 @@ function Step1({ data, onChange }) {
       <div className="flex flex-col gap-5">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">L3 活動編號 <span className="text-red-500">*</span></label>
-          <input type="text" placeholder="例：1.1.1" value={data.l3Number}
+          <input type="text" placeholder="例：1-1-1" value={data.l3Number}
             onChange={e => handleNumber(e.target.value)}
             className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 ${numErr ? 'border-red-400' : 'border-gray-300'}`} />
           {numErr && <p className="text-xs text-red-500 mt-1">{numErr}</p>}
-          <p className="text-xs text-gray-400 mt-1">三層編碼，例：1.1.1、2.3.4</p>
+          <p className="text-xs text-gray-400 mt-1">三層編碼，例：1-1-1、2-3-4（與 Excel 匯入格式一致）</p>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">L3 活動名稱 <span className="text-red-500">*</span></label>
@@ -137,7 +137,7 @@ function Step1({ data, onChange }) {
         {data.l3Number && data.l3Name && (
           <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
             預覽：<strong>{data.l3Number}</strong>　{data.l3Name}
-            <br /><span className="text-xs opacity-70">L4 任務將從 {data.l3Number}.1 開始編號</span>
+            <br /><span className="text-xs opacity-70">L4 任務將從 {data.l3Number}-1 開始編號</span>
           </div>
         )}
       </div>
@@ -372,7 +372,7 @@ function validate(step, data) {
   if (step >= 0) {
     if (!data.l3Number.trim()) errs.push('請填寫 L3 活動編號');
     if (!data.l3Name.trim())   errs.push('請填寫 L3 活動名稱');
-    if (!/^\d+(\.\d+)*$/.test(data.l3Number.trim())) errs.push('L3 編號格式錯誤（例：1.1.1）');
+    if (!/^\d+([.-]\d+)*$/.test(data.l3Number.trim())) errs.push('L3 編號格式錯誤（例：1-1-1）');
   }
   if (step >= 1) {
     const namedRoles = data.roles.filter(r => r.name.trim());

@@ -1,9 +1,22 @@
 const FLOWS_KEY = 'bpm_flows_v1';
 
+function normalizeNumber(raw) {
+  return raw == null ? raw : String(raw).replace(/\./g, '-');
+}
+
+function migrateFlow(flow) {
+  if (!flow) return flow;
+  const tasks = Array.isArray(flow.tasks)
+    ? flow.tasks.map(t => (t && t.l4Number ? { ...t, l4Number: normalizeNumber(t.l4Number) } : t))
+    : flow.tasks;
+  return { ...flow, l3Number: normalizeNumber(flow.l3Number), tasks };
+}
+
 export function loadFlows() {
   try {
     const raw = localStorage.getItem(FLOWS_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.map(migrateFlow) : [];
   } catch {
     return [];
   }
