@@ -9,7 +9,16 @@ import { useState } from 'react';
  */
 
 const CHANGELOG = [
-  {
+    {
+    date: '2026-04-20',
+    title: 'L3/L4 編號修復 + 清理孤兒程式碼',
+    items: [
+      '修復泳道圖顯示「1-1-1.2」混合格式：layout.js 改為使用橫線分隔（1-1-1-2）',
+      '修復 Excel 匯出 L4 編號沿用點分隔：buildTableL4Map 改用橫線，並把讀到的 l4Number 自動轉為橫線',
+      '首頁舊資料自動遷移：loadFlows 載入時將 localStorage 中的點分隔編號（l3Number 與 task.l4Number）轉為橫線',
+      '清理 9 個孤兒檔案：FlowViewer.jsx、InputPanel.jsx、DiagramPanel.jsx、utils/parser.js、utils/layout.js、utils/vsdxExport.js、constants/colors.js、constants/defaultInput.js、swimlane.html',
+    ],
+  },{
     date: '2026-04-17',
     title: 'L3/L4 編號格式統一：改為「-」分隔',
     items: [
