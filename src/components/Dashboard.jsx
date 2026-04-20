@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import HelpPanel from './HelpPanel.jsx';
 import ChangelogPanel from './ChangelogPanel.jsx';
 import DiagramRenderer from './DiagramRenderer.jsx';
@@ -34,9 +34,22 @@ export default function Dashboard({ flows, onNew, onEdit, onView, onDelete, onIm
   const [importError, setImportError] = useState('');
   const [importSuccess, setImportSuccess] = useState('');
   const [pendingPngFlow, setPendingPngFlow] = useState(null);
+  const [logoReaction, setLogoReaction] = useState(null); // 'flash' | 'dim' | null
   const fileInputRef = useRef(null);
 
   const sortedFlows = useMemo(() => sortFlows(flows, sortKey), [flows, sortKey]);
+
+  // Auto-clear logo reaction after animation completes
+  useEffect(() => {
+    if (!logoReaction) return;
+    const timer = setTimeout(() => setLogoReaction(null), 900);
+    return () => clearTimeout(timer);
+  }, [logoReaction]);
+
+  function handleDelete(id) {
+    setLogoReaction('dim');
+    onDelete(id);
+  }
 
   function fmtDateTime(iso) {
     if (!iso) return '';
@@ -70,6 +83,7 @@ export default function Dashboard({ flows, onNew, onEdit, onView, onDelete, onIm
         if (importedFlows.length > 1) {
           setImportSuccess(`成功匯入 ${importedFlows.length} 個 L3 活動：${importedFlows.map(f => f.l3Number).join('、')}`);
         }
+        setLogoReaction('flash');
         onImportExcel(importedFlows);
       } catch (err) {
         setImportError(err.message ?? '解析 Excel 時發生未知錯誤');
@@ -86,7 +100,7 @@ export default function Dashboard({ flows, onNew, onEdit, onView, onDelete, onIm
         <img
           src={`${import.meta.env.BASE_URL}logo.png`}
           alt="FlowSprite Logo"
-          className="h-9 w-9 rounded-full object-cover flex-shrink-0 logo-happy"
+          className={`h-9 w-9 rounded-full object-cover flex-shrink-0 logo-happy ${logoReaction ? `logo-${logoReaction}` : ''}`}
           onError={e => { e.currentTarget.style.display = 'none'; }}
         />
         <span className="text-lg font-bold tracking-wide">FlowSprite</span>
@@ -230,7 +244,7 @@ export default function Dashboard({ flows, onNew, onEdit, onView, onDelete, onIm
                       編輯
                     </button>
                     <button onClick={() => {
-                      if (window.confirm(`確定要刪除「${flow.l3Name}」嗎？`)) onDelete(flow.id);
+                      if (window.confirm(`確定要刪除「${flow.l3Name}」嗎？`)) handleDelete(flow.id);
                     }}
                       className="px-3 py-1.5 text-sm rounded border border-red-200 text-red-500 hover:bg-red-50 transition-colors">
                       刪除
