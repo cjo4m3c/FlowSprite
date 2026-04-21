@@ -186,7 +186,7 @@ function Step2({ data, onChange }) {
             <select value={role.type}
               onChange={e => updateRole(role.id, 'type', e.target.value)}
               className="px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none"
-              style={{ background: role.type === 'external' ? '#16982B' : '#2A52BE', color: 'white' }}>
+              style={{ background: role.type === 'external' ? '#5B8AC9' : '#2A5598', color: 'white' }}>
               <option value="internal">內部角色</option>
               <option value="external">外部角色</option>
             </select>
@@ -206,7 +206,7 @@ function Step2({ data, onChange }) {
         <div className="flex flex-col gap-1">
           {data.roles.filter(r => r.name).map((r, i) => (
             <div key={r.id} className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-sm" style={{ background: r.type === 'external' ? '#16982B' : '#2A52BE' }} />
+              <div className="w-3 h-3 rounded-sm" style={{ background: r.type === 'external' ? '#5B8AC9' : '#2A5598' }} />
               <span className="text-xs font-medium text-gray-700">泳道 {i + 1}：{r.name}</span>
               <span className="text-xs text-gray-400">（{r.type === 'external' ? '外部' : '內部'}）</span>
             </div>
@@ -482,8 +482,8 @@ export default function Wizard({ flow, onSave, onCancel }) {
   }
 
   return (
-    <div className="min-h-screen" style={{ background: '#F3F4F6' }}>
-      <header className="px-6 py-3 shadow-md flex items-center gap-4" style={{ background: '#4A5240', color: 'white' }}>
+    <div className="min-h-screen" style={{ background: '#F5F8FC' }}>
+      <header className="px-6 py-3 shadow-md flex items-center gap-4" style={{ background: '#2A5598', color: 'white' }}>
         <button onClick={onCancel} className="opacity-70 hover:opacity-100 text-sm">← 返回</button>
         <span className="text-lg font-bold tracking-wide">
           {flow ? `編輯：${data.l3Number} ${data.l3Name}` : '新增 L3 活動'}
@@ -517,17 +517,17 @@ export default function Wizard({ flow, onSave, onCancel }) {
           {step < STEPS.length - 1 ? (
             <button onClick={handleNext}
               className="px-5 py-2 rounded-lg text-white text-sm font-medium transition-colors"
-              style={{ background: '#2A52BE' }}
-              onMouseEnter={e => e.currentTarget.style.background = '#1a3a9e'}
-              onMouseLeave={e => e.currentTarget.style.background = '#2A52BE'}>
+              style={{ background: '#3470B5' }}
+              onMouseEnter={e => e.currentTarget.style.background = '#274F86'}
+              onMouseLeave={e => e.currentTarget.style.background = '#3470B5'}>
               下一步 →
             </button>
           ) : (
             <button onClick={handleSave}
               className="px-5 py-2 rounded-lg text-white text-sm font-medium transition-colors"
-              style={{ background: '#16982B' }}
-              onMouseEnter={e => e.currentTarget.style.background = '#0f7020'}
-              onMouseLeave={e => e.currentTarget.style.background = '#16982B'}>
+              style={{ background: '#2A5598' }}
+              onMouseEnter={e => e.currentTarget.style.background = '#1E4677'}
+              onMouseLeave={e => e.currentTarget.style.background = '#2A5598'}>
               儲存並完成
             </button>
           )}

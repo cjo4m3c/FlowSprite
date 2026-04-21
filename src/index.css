@@ -9,14 +9,14 @@
 body {
   margin: 0;
   font-family: 'Microsoft JhengHei', '微軟正黑體', 'PingFang TC', 'Noto Sans TC', sans-serif;
-  background: #F3F4F6;
+  background: #F5F8FC;
 }
 
-/* Smooth scrollbars */
+/* Smooth scrollbars (blue tint) */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: #f1f1f1; }
-::-webkit-scrollbar-thumb { background: #c0c0c0; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #a0a0a0; }
+::-webkit-scrollbar-track { background: #E8F1F9; }
+::-webkit-scrollbar-thumb { background: #7AB5DD; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #3470B5; }
 
 /* SVG font fallback */
 svg text {

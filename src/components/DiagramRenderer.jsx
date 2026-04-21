@@ -368,12 +368,18 @@ export default function DiagramRenderer({ flow, showExport = true, autoExportPng
           </span>
           <div className="ml-auto flex gap-2">
             <button onClick={handleExport}
-              className="px-4 py-1.5 text-sm bg-gray-700 text-white rounded hover:bg-gray-900 transition-colors">
+              className="px-4 py-1.5 text-sm text-white rounded transition-colors"
+              style={{ background: '#3470B5' }}
+              onMouseEnter={e => e.currentTarget.style.background = '#274F86'}
+              onMouseLeave={e => e.currentTarget.style.background = '#3470B5'}>
               ↓ 匯出 PNG
             </button>
             <button onClick={handleExportDrawio}
               title="可用 diagrams.net（免費）或 VS Code Draw.io 擴充套件開啟編輯"
-              className="px-4 py-1.5 text-sm bg-indigo-700 text-white rounded hover:bg-indigo-900 transition-colors">
+              className="px-4 py-1.5 text-sm text-white rounded transition-colors"
+              style={{ background: '#2A5598' }}
+              onMouseEnter={e => e.currentTarget.style.background = '#1E4677'}
+              onMouseLeave={e => e.currentTarget.style.background = '#2A5598'}>
               ↓ 匯出 .drawio
             </button>
           </div>

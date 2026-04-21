@@ -149,9 +149,9 @@ export default function Dashboard({ flows, onNew, onEdit, onView, onDelete, onIm
   }
 
   return (
-    <div className="min-h-screen" style={{ background: '#F3F4F6' }}>
+    <div className="min-h-screen" style={{ background: '#F5F8FC' }}>
       {/* Top bar */}
-      <header className="px-6 py-3 shadow-md flex items-center gap-4" style={{ background: '#4A5240', color: 'white' }}>
+      <header className="px-6 py-3 shadow-md flex items-center gap-4" style={{ background: '#2A5598', color: 'white' }}>
         <img
           src={`${import.meta.env.BASE_URL}logo.png`}
           alt="FlowSprite Logo"
@@ -194,17 +194,17 @@ export default function Dashboard({ flows, onNew, onEdit, onView, onDelete, onIm
             <button
               onClick={() => { setImportError(''); fileInputRef.current?.click(); }}
               className="px-4 py-2 rounded-lg font-medium text-sm shadow transition-colors border"
-              style={{ background: '#16982B', color: 'white', borderColor: '#16982B' }}
-              onMouseEnter={e => e.currentTarget.style.background = '#0f7020'}
-              onMouseLeave={e => e.currentTarget.style.background = '#16982B'}>
+              style={{ background: '#3470B5', color: 'white', borderColor: '#3470B5' }}
+              onMouseEnter={e => e.currentTarget.style.background = '#274F86'}
+              onMouseLeave={e => e.currentTarget.style.background = '#3470B5'}>
               上傳 Excel
             </button>
 
             <button onClick={onNew}
               className="px-5 py-2 rounded-lg text-white font-medium shadow transition-colors"
-              style={{ background: '#2A52BE' }}
-              onMouseEnter={e => e.currentTarget.style.background = '#1a3a9e'}
-              onMouseLeave={e => e.currentTarget.style.background = '#2A52BE'}>
+              style={{ background: '#2A5598' }}
+              onMouseEnter={e => e.currentTarget.style.background = '#1E4677'}
+              onMouseLeave={e => e.currentTarget.style.background = '#2A5598'}>
               + 新增 L3 活動
             </button>
           </div>
@@ -221,10 +221,10 @@ export default function Dashboard({ flows, onNew, onEdit, onView, onDelete, onIm
 
         {/* Import success banner (multi-L3 only) */}
         {importSuccess && (
-          <div className="mb-4 p-3 rounded-lg bg-teal-50 border border-teal-200 text-sm text-teal-800 flex items-start gap-2">
+          <div className="mb-4 p-3 rounded-lg bg-sky-50 border border-sky-200 text-sm text-sky-800 flex items-start gap-2">
             <span className="flex-shrink-0">✓</span>
             <span>{importSuccess}</span>
-            <button onClick={() => setImportSuccess('')} className="ml-auto text-teal-400 hover:text-teal-600 font-bold">×</button>
+            <button onClick={() => setImportSuccess('')} className="ml-auto text-sky-400 hover:text-sky-600 font-bold">×</button>
           </div>
         )}
 
@@ -257,9 +257,9 @@ export default function Dashboard({ flows, onNew, onEdit, onView, onDelete, onIm
             <button onClick={handleBulkDownload}
               disabled={pngQueue.length > 0 || !(bulkFormats.png || bulkFormats.drawio || bulkFormats.excel)}
               className="px-4 py-1.5 text-sm rounded font-medium text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ background: '#2A52BE' }}
-              onMouseEnter={e => !e.currentTarget.disabled && (e.currentTarget.style.background = '#1a3a9e')}
-              onMouseLeave={e => (e.currentTarget.style.background = '#2A52BE')}>
+              style={{ background: '#2A5598' }}
+              onMouseEnter={e => !e.currentTarget.disabled && (e.currentTarget.style.background = '#1E4677')}
+              onMouseLeave={e => (e.currentTarget.style.background = '#2A5598')}>
               批量下載
             </button>
           </div>
@@ -274,7 +274,7 @@ export default function Dashboard({ flows, onNew, onEdit, onView, onDelete, onIm
         )}
 
         {/* Excel format hint */}
-        <div className="mb-4 p-3 rounded-lg bg-green-50 border border-green-200 text-xs text-green-800 space-y-1">
+        <div className="mb-4 p-3 rounded-lg bg-sky-50 border border-sky-200 text-xs text-sky-800 space-y-1">
           <div>
             <strong>Excel 上傳格式（支援單檔多個 L3）：</strong>
             首列為標題列，欄位依序為：L3 活動編號、L3 活動名稱、L4 任務編號、L4 任務名稱、任務重點說明、任務重要輸入、
@@ -282,14 +282,14 @@ export default function Dashboard({ flows, onNew, onEdit, onView, onDelete, onIm
           </div>
           <div>
             <strong>任務關聯說明支援的標記：</strong>
-            <span className="ml-1">序列流向 5.1.1.3</span>
-            <span className="mx-1 text-green-500">·</span>
+            <span className="ml-1">序列流向 5-1-1-3</span>
+            <span className="mx-1 text-sky-500">·</span>
             <span>流程開始</span>
-            <span className="mx-1 text-green-500">·</span>
+            <span className="mx-1 text-sky-500">·</span>
             <span>流程結束</span>
-            <span className="mx-1 text-green-500">·</span>
-            <span>條件分支至 5.1.1.3、5.1.1.5</span>
-            <span className="mx-1 text-green-500">·</span>
+            <span className="mx-1 text-sky-500">·</span>
+            <span>條件分支至 5-1-1-3、5-1-1-5</span>
+            <span className="mx-1 text-sky-500">·</span>
             <span>條件合併來自多個分支</span>
           </div>
         </div>
@@ -322,7 +322,7 @@ export default function Dashboard({ flows, onNew, onEdit, onView, onDelete, onIm
                     </svg>
                   </button>
                   <span className="px-2 py-0.5 rounded text-xs font-bold text-white flex-shrink-0"
-                    style={{ background: '#2A52BE' }}>
+                    style={{ background: '#2A5598' }}>
                     {flow.l3Number}
                   </span>
                   <span className="font-semibold text-gray-800 leading-tight">{flow.l3Name}</span>
@@ -344,7 +344,7 @@ export default function Dashboard({ flows, onNew, onEdit, onView, onDelete, onIm
                   {(flow.roles ?? []).map(r => (
                     <span key={r.id}
                       className="px-2 py-0.5 rounded-full text-xs text-white"
-                      style={{ background: r.type === 'external' ? '#16982B' : '#6B7280' }}>
+                      style={{ background: r.type === 'external' ? '#5B8AC9' : '#2A5598' }}>
                       {r.name}
                     </span>
                   ))}
@@ -366,15 +366,15 @@ export default function Dashboard({ flows, onNew, onEdit, onView, onDelete, onIm
                   </div>
                   <div className="flex gap-1.5">
                     <button onClick={() => setPendingPngFlow(flow)}
-                      className="flex-1 py-1.5 text-xs rounded border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors">
+                      className="flex-1 py-1.5 text-xs rounded border border-sky-300 text-sky-700 hover:bg-sky-50 transition-colors">
                       ↓ PNG
                     </button>
                     <button onClick={() => exportDrawio(flow)}
-                      className="flex-1 py-1.5 text-xs rounded border border-indigo-200 text-indigo-600 hover:bg-indigo-50 transition-colors">
+                      className="flex-1 py-1.5 text-xs rounded border border-blue-300 text-blue-700 hover:bg-blue-50 transition-colors">
                       ↓ draw.io
                     </button>
                     <button onClick={() => exportFlowToExcel(flow)}
-                      className="flex-1 py-1.5 text-xs rounded border border-green-200 text-green-600 hover:bg-green-50 transition-colors">
+                      className="flex-1 py-1.5 text-xs rounded border border-cyan-300 text-cyan-700 hover:bg-cyan-50 transition-colors">
                       ↓ Excel
                     </button>
                   </div>

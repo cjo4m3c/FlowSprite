@@ -209,7 +209,10 @@ export default function HelpPanel() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="px-3 py-2 rounded-lg border border-gray-300 text-gray-600 text-sm hover:bg-gray-100 transition-colors"
+        className="px-3 py-2 rounded-lg text-white text-sm font-medium transition-colors"
+        style={{ background: '#3470B5' }}
+        onMouseEnter={e => e.currentTarget.style.background = '#5B8AC9'}
+        onMouseLeave={e => e.currentTarget.style.background = '#3470B5'}
         title="查看規則說明">
         規則說明
       </button>
@@ -354,8 +357,10 @@ export default function HelpPanel() {
             {/* Footer */}
             <div className="px-6 py-3 border-t border-gray-100 flex justify-end">
               <button onClick={() => setOpen(false)}
-                className="px-5 py-2 rounded-lg text-white text-sm font-medium"
-                style={{ background: '#4A5240' }}>
+                className="px-5 py-2 rounded-lg text-white text-sm font-medium transition-colors"
+                style={{ background: '#2A5598' }}
+                onMouseEnter={e => e.currentTarget.style.background = '#1E4677'}
+                onMouseLeave={e => e.currentTarget.style.background = '#2A5598'}>
                 關閉
               </button>
             </div>

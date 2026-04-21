@@ -97,7 +97,7 @@ export default function FlowTable({ flow, onSave }) {
               onClick={handleSave}
               disabled={!hasChanges}
               className="px-4 py-1.5 text-sm rounded transition-colors text-white disabled:opacity-40 disabled:cursor-not-allowed"
-              style={{ background: hasChanges ? '#2A52BE' : '#9CA3AF' }}
+              style={{ background: hasChanges ? '#2A5598' : '#9CA3AF' }}
             >
               儲存
             </button>
@@ -105,9 +105,9 @@ export default function FlowTable({ flow, onSave }) {
           <button
             onClick={handleDownload}
             className="px-4 py-1.5 text-sm rounded text-white transition-colors"
-            style={{ background: '#16982B' }}
-            onMouseEnter={e => e.currentTarget.style.background = '#0f7020'}
-            onMouseLeave={e => e.currentTarget.style.background = '#16982B'}
+            style={{ background: '#3470B5' }}
+            onMouseEnter={e => e.currentTarget.style.background = '#274F86'}
+            onMouseLeave={e => e.currentTarget.style.background = '#3470B5'}
           >
             ↓ 下載 Excel
           </button>
