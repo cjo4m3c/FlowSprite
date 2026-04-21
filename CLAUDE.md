@@ -28,11 +28,18 @@
 
 - **L3 編號**：`1-1-1`（三層橫線分隔，恰好 3 段）
 - **L4 編號**：`1-1-1-1`（L3 編號 + `-` + 序號，恰好 4 段）
+- **特殊類型 L4 後綴**：
+  - 開始事件：尾碼必為 `0`（範例 `1-1-7-0`）
+  - 結束事件：尾碼必為 `99`（範例 `1-1-7-99`）
+  - 排他閘道（XOR）：基本 L4 編號後加 `_g`（範例 `1-1-9-5_g`）
 - 格式驗證 regex 的**單一來源**在 `src/utils/taskDefs.js`（相容點與橫線）：
   - `L3_NUMBER_PATTERN = /^\d+[.-]\d+[.-]\d+$/`
-  - `L4_NUMBER_PATTERN = /^\d+[.-]\d+[.-]\d+[.-]\d+$/`
-  - **編號規則若變更，只改這兩個常數**；其他檔案透過 import 引用
-- Excel 匯入：上傳前用 `validateNumbering` 逐列檢核（`excelImport.js`），不合會列出所有錯誤列；原始資料用點分隔時系統自動正規化為橫線
+  - `L4_NUMBER_PATTERN = /^\d+[.-]\d+[.-]\d+[.-]\d+(_g)?$/`
+  - `L4_START_PATTERN = /^\d+[.-]\d+[.-]\d+[.-]0$/`
+  - `L4_END_PATTERN = /^\d+[.-]\d+[.-]\d+[.-]99$/`
+  - `L4_XOR_GATEWAY_PATTERN = /^\d+[.-]\d+[.-]\d+[.-]\d+_g$/`
+  - **編號規則若變更，只改這幾個常數**；其他檔案透過 import 引用
+- Excel 匯入：上傳前用 `validateNumbering` 逐列檢核（`excelImport.js`），會檢查 L3 / L4 基本格式 + 開始/結束/XOR 的尾碼規則，不合會列出所有錯誤列
 - 所有新範例、placeholder、錯誤訊息都必須使用橫線格式
 - 已套用此規則的位置：
   - `src/utils/excelImport.js`：`normalizeL3Number` (commit 4ef7d66)
