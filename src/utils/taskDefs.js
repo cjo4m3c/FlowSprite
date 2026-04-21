@@ -5,12 +5,20 @@
 import { generateId } from './storage.js';
 
 // ── L3 / L4 number format (single source of truth) ──────────────────
-// Current spec: L3 = 3 segments (d-d-d), L4 = 4 segments (d-d-d-d).
-// Both `.` (legacy) and `-` (current) separators accepted for backward compat
-// with existing data; new data should use `-`. If numbering rules change,
-// update BOTH patterns here + any example strings in Wizard/HelpPanel.
-export const L3_NUMBER_PATTERN = /^\d+[.-]\d+[.-]\d+$/;
-export const L4_NUMBER_PATTERN = /^\d+[.-]\d+[.-]\d+[.-]\d+$/;
+// Current spec:
+//   L3:               d-d-d                   (3 segments)
+//   L4 base:          d-d-d-d                 (4 segments, also allows _g for XOR)
+//   L4 start event:   d-d-d-0                 (suffix must be 0)
+//   L4 end event:     d-d-d-99                (suffix must be 99)
+//   L4 XOR gateway:   d-d-d-d_g               (with _g tag)
+// Both `.` (legacy) and `-` separators accepted for backward compat with
+// existing data; new data should use `-`. If numbering rules change,
+// update these patterns + any example strings in Wizard / HelpPanel.
+export const L3_NUMBER_PATTERN      = /^\d+[.-]\d+[.-]\d+$/;
+export const L4_NUMBER_PATTERN      = /^\d+[.-]\d+[.-]\d+[.-]\d+(_g)?$/;
+export const L4_START_PATTERN       = /^\d+[.-]\d+[.-]\d+[.-]0$/;
+export const L4_END_PATTERN         = /^\d+[.-]\d+[.-]\d+[.-]99$/;
+export const L4_XOR_GATEWAY_PATTERN = /^\d+[.-]\d+[.-]\d+[.-]\d+_g$/;
 
 // ── Constants ────────────────────────────────────────────
 export const CONNECTION_TYPES = [
@@ -58,7 +66,7 @@ export const CONN_ROW_BG = {
   'loop-return':        '#F5F3FF',
 };
 
-// ── Factories ────────────────────────────────────────────
+// ── Factories ─────────────────────────────────────────────
 export function makeRole() {
   return { id: generateId(), name: '', type: 'internal' };
 }
