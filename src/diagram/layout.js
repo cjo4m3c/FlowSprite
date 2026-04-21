@@ -22,15 +22,61 @@ function halfExtent(type, axis) {
 }
 
 /**
- * Gateway exit/entry side rules.
+ * Gateway exit port priority table (Phase 1: smart routing).
  *
- * dr = row diff, dc = col diff (target – source)
+ * For a given direction (dr = rowDiff, dc = colDiff) from gateway → target,
+ * returns the ordered list of preferred exit sides. The greedy assigner below
+ * walks this list picking the first side not yet used by another condition.
+ *
+ * Legacy `getGatewayExitEntry` preserved as fallback for edge cases & tests.
+ */
+function getExitPriority(dr, dc) {
+  if (dr === 0) {
+    if (dc === 1)  return ['right',  'bottom', 'top'];   // forward adjacent
+    if (dc > 1)    return ['top',    'bottom', 'right']; // forward skip (corridor above)
+    return ['top',   'bottom', 'left'];                  // backward / same col
+  }
+  if (dr < 0) {
+    if (dc === 0) return ['top',    'left',   'right'];
+    if (dc > 0)   return ['top',    'right',  'bottom'];
+    return ['top',   'left',   'bottom'];                // up-left backward
+  }
+  // dr > 0
+  if (dc === 0) return ['bottom', 'left',   'right'];
+  if (dc > 0)   return ['bottom', 'right',  'top'];
+  return ['bottom', 'left',   'top'];                    // down-left backward
+}
+
+/**
+ * Infer entry side on target given the chosen exit side and direction.
+ *
+ *   exit=right/left  (horizontal) → target aligned vertically, enter via left/right (if same row)
+ *                                   or top/bottom (if different row)
+ *   exit=top/bottom  (vertical)   → target aligned horizontally, enter via left/right (if different col)
+ *                                   or top/bottom opposite (if same col, corridor alignment)
+ */
+function inferEntrySide(exitSide, dr, dc) {
+  if (exitSide === 'top' || exitSide === 'bottom') {
+    if (dc > 0) return 'left';
+    if (dc < 0) return 'right';
+    // same column: target is directly above/below, enter opposite vertical
+    return exitSide === 'top' ? 'bottom' : 'top';
+  }
+  // exitSide is 'right' or 'left'
+  if (dr < 0) return 'bottom';
+  if (dr > 0) return 'top';
+  // same row: enter opposite horizontal
+  return exitSide === 'right' ? 'left' : 'right';
+}
+
+/**
+ * Legacy single-pair rule (kept for non-gateway fallbacks & reference).
  *
  *   same row, dc=1 (adjacent forward)     → RIGHT → LEFT
  *   same row, dc≠1 (skip/backward)        → BOTTOM → BOTTOM  (slotted corridor below)
  *   target above, dc=1 (adjacent right)   → TOP   → LEFT    (L-path)
  *   target above, dc≠1                    → TOP   → TOP     (corridor above)
- *   target below, dc≥1 (any right)        → BOTTOM → LEFT   (L-path, issue-3 fix)
+ *   target below, dc≥1 (any right)        → BOTTOM → LEFT   (L-path)
  *   target below, dc<1 (left/backward)    → BOTTOM → BOTTOM (corridor below)
  */
 function getGatewayExitEntry(fromPos, toPos) {
@@ -42,7 +88,6 @@ function getGatewayExitEntry(fromPos, toPos) {
     return { exitSide: 'top', entrySide: 'top' };
   }
   if (dr > 0) {
-    // Fix issue 3: all rightward downward connections use simple L-path (BOTTOM→LEFT)
     if (dc >= 1) return { exitSide: 'bottom', entrySide: 'left' };
     return { exitSide: 'bottom', entrySide: 'bottom' };
   }
@@ -182,30 +227,100 @@ export function computeLayout(flow) {
   const taskColOf = {};
   tasks.forEach(task => { taskColOf[task.id] = colOf[task.id]; });
 
-  // ── 4. Pre-compute per-gateway condition routing ──────────────
-  // Computes exit/entry sides for every gateway condition, with exit-side
-  // deduplication so that two conditions of the same gateway that would both
-  // use the same exit side are given different sides (Fix issue 2).
+  // ── 4. Per-gateway condition routing (smart distribution) ─────
+  //
+  //   Phase 1: For each gateway, compute an ordered exit-side preference list
+  //            per condition based on (dr, dc). Greedy-assign each condition
+  //            to its highest-priority side not yet taken by a sibling condition.
+  //
+  //   Phase 2: After all gateways are processed, scan per-target incoming
+  //            connections. If ≥2 connections enter the same side of the same
+  //            target, bump the later ones to an alternate entry side where
+  //            geometry allows.
   //
   // Key: `${taskId}::${condId}`  Value: {exitSide, entrySide}
   const condRouting = new Map();
+  const incomingByTarget = {};
+
   tasks.forEach(task => {
     if (task.type !== 'gateway' || !task.conditions?.length) return;
+    const fr = taskRowOf[task.id], fc = taskColOf[task.id];
     const usedExits = new Set();
-    task.conditions.forEach(cond => {
-      if (!cond.nextTaskId || taskRowOf[cond.nextTaskId] === undefined) return;
-      const fr = taskRowOf[task.id], fc = taskColOf[task.id];
-      const tr = taskRowOf[cond.nextTaskId], tc = taskColOf[cond.nextTaskId];
-      let { exitSide, entrySide } = getGatewayExitEntry(
-        { row: fr, col: fc }, { row: tr, col: tc }
-      );
-      // If this exit side is already taken, flip to the opposite vertical side
-      if (usedExits.has(exitSide)) {
-        if (exitSide === 'bottom') { exitSide = 'top';    entrySide = 'top';    }
-        else if (exitSide === 'top') { exitSide = 'bottom'; entrySide = 'bottom'; }
-      }
+
+    // Sort conditions so that the one with the most constrained direction
+    // (forward-adjacent) gets its preferred side first. Conditions farther
+    // away or backward yield when there's a conflict.
+    const prioritized = task.conditions
+      .filter(c => c.nextTaskId && taskRowOf[c.nextTaskId] !== undefined)
+      .map(c => {
+        const dr = taskRowOf[c.nextTaskId] - fr;
+        const dc = taskColOf[c.nextTaskId] - fc;
+        return { cond: c, dr, dc, priorities: getExitPriority(dr, dc) };
+      });
+
+    // Sort: forward-adjacent (dc=1, dr=0) first, then by Manhattan distance asc
+    prioritized.sort((a, b) => {
+      const adjA = (a.dr === 0 && a.dc === 1) ? 0 : 1;
+      const adjB = (b.dr === 0 && b.dc === 1) ? 0 : 1;
+      if (adjA !== adjB) return adjA - adjB;
+      return (Math.abs(a.dr) + Math.abs(a.dc)) - (Math.abs(b.dr) + Math.abs(b.dc));
+    });
+
+    prioritized.forEach(({ cond, dr, dc, priorities }) => {
+      let exitSide = priorities.find(p => !usedExits.has(p)) ?? priorities[0];
+      let entrySide = inferEntrySide(exitSide, dr, dc);
       usedExits.add(exitSide);
       condRouting.set(`${task.id}::${cond.id}`, { exitSide, entrySide });
+
+      (incomingByTarget[cond.nextTaskId] ||= []).push({
+        key: `${task.id}::${cond.id}`, fromId: task.id, dr: -dr, dc: -dc, entrySide,
+      });
+    });
+  });
+
+  // Phase 2: dedup entry sides per target (only for gateway targets, which
+  // reliably have 4 ports; tasks use left→right model and don't need it).
+  tasks.forEach(target => {
+    if (target.type !== 'gateway') return;
+    const incs = incomingByTarget[target.id];
+    if (!incs || incs.length < 2) return;
+
+    const usedEntries = new Set();
+    // Order: forward-adjacent-left first (dc=-1, dr=0 from target POV means source is left neighbor)
+    incs.sort((a, b) => {
+      const adjA = (a.dr === 0 && a.dc === -1) ? 0 : 1;
+      const adjB = (b.dr === 0 && b.dc === -1) ? 0 : 1;
+      if (adjA !== adjB) return adjA - adjB;
+      return (Math.abs(a.dr) + Math.abs(a.dc)) - (Math.abs(b.dr) + Math.abs(b.dc));
+    });
+
+    incs.forEach(inc => {
+      const { key, entrySide: preferred, dr, dc } = inc;
+      // Build entry-priority: original choice first, then alternates by direction
+      const entryPriorities = [preferred, ...['left', 'top', 'bottom', 'right'].filter(s => s !== preferred)];
+      // Filter to geometrically sensible entries given (dr, dc) from target POV.
+      //   dr>0 (source above target): top is sensible; bottom less so.
+      //   dr<0 (source below): bottom sensible.
+      //   dc>0 (source to right): right sensible; left less so.
+      //   dc<0 (source to left): left sensible.
+      // dr/dc here are FROM-TARGET-POV (source relative to target).
+      //   dr < 0 → source above target → entering TOP natural, BOTTOM awkward
+      //   dr > 0 → source below target → entering BOTTOM natural, TOP awkward
+      //   dc < 0 → source left of target → entering LEFT natural, RIGHT awkward
+      //   dc > 0 → source right of target → entering RIGHT natural, LEFT awkward
+      const sensible = entryPriorities.filter(s => {
+        if (s === 'top'    && dr > 0)  return false;
+        if (s === 'bottom' && dr < 0)  return false;
+        if (s === 'left'   && dc > 0)  return false;
+        if (s === 'right'  && dc < 0)  return false;
+        return true;
+      });
+      const finalEntry = sensible.find(s => !usedEntries.has(s)) ?? preferred;
+      usedEntries.add(finalEntry);
+      if (finalEntry !== preferred) {
+        const r = condRouting.get(key);
+        condRouting.set(key, { exitSide: r.exitSide, entrySide: finalEntry });
+      }
     });
   });
 
@@ -334,40 +449,57 @@ export function routeArrow(fromPos, toPos, exitSide, entrySide, laneBottomY) {
   const tx = toPos[entrySide].x;
   const ty = toPos[entrySide].y;
 
+  // Degenerate: already aligned → single segment
   if (Math.abs(sx - tx) < 1 && Math.abs(sy - ty) < 1) return [[sx, sy], [tx, ty]];
   if (Math.abs(sy - ty) < 1) return [[sx, sy], [tx, ty]];
   if (Math.abs(sx - tx) < 1) return [[sx, sy], [tx, ty]];
 
-  // ── bottom → bottom: slotted corridor below lower lane ───────
+  // ── Parallel corridors (same side in / out) ───────────────────
   if (exitSide === 'bottom' && entrySide === 'bottom') {
     const routeY = laneBottomY ?? (Math.max(sy, ty) + 24);
     return [[sx, sy], [sx, routeY], [tx, routeY], [tx, ty]];
   }
-
-  // ── top → top: corridor above higher node ──────────────────
   if (exitSide === 'top' && entrySide === 'top') {
     const corridorY = Math.min(sy, ty) - 24;
     return [[sx, sy], [sx, corridorY], [tx, corridorY], [tx, ty]];
   }
+  if (exitSide === 'left' && entrySide === 'left') {
+    const corridorX = Math.min(sx, tx) - 24;
+    return [[sx, sy], [corridorX, sy], [corridorX, ty], [tx, ty]];
+  }
+  if (exitSide === 'right' && entrySide === 'right') {
+    const corridorX = Math.max(sx, tx) + 24;
+    return [[sx, sy], [corridorX, sy], [corridorX, ty], [tx, ty]];
+  }
 
-  // ── top → left / top → *: 1-bend L-path ───────────────────
-  if (exitSide === 'top') {
+  // ── Vertical exit (top/bottom) → any other entry ──
+  // If target sits on the same side of source as the exit (ty would fall back
+  // through the source shape with a naive 1-bend), use a corridor detour.
+  if (exitSide === 'top' || exitSide === 'bottom') {
+    const needsCorridor = (exitSide === 'top' && ty >= sy) || (exitSide === 'bottom' && ty <= sy);
+    if (needsCorridor) {
+      const corridorY = exitSide === 'top' ? (sy - 24) : (sy + 24);
+      return [[sx, sy], [sx, corridorY], [tx, corridorY], [tx, ty]];
+    }
     return [[sx, sy], [sx, ty], [tx, ty]];
   }
 
-  // ── bottom → left: 1-bend L-path (fix issue 3) ──────────────
-  // Covers both adjacent (dc=1) and skip/multi-lane (dc>1) downward connections.
-  if (exitSide === 'bottom' && entrySide === 'left') {
-    return [[sx, sy], [sx, ty], [tx, ty]];
+  // ── Horizontal exit → horizontal entry (opposite sides) ─────
+  // right → left: forward midX if target is to the right; else loop above title bar
+  if (exitSide === 'right' && entrySide === 'left') {
+    if (sx < tx) {
+      const midX = (sx + tx) / 2;
+      return [[sx, sy], [midX, sy], [midX, ty], [tx, ty]];
+    }
+    const topY = TITLE_H - 22;
+    return [[sx, sy], [sx + 18, sy], [sx + 18, topY], [tx - 18, topY], [tx - 18, ty], [tx, ty]];
+  }
+  if (exitSide === 'left' && entrySide === 'right') {
+    // Backward loop via corridor above title bar
+    const topY = TITLE_H - 22;
+    return [[sx, sy], [sx - 18, sy], [sx - 18, topY], [tx + 18, topY], [tx + 18, ty], [tx, ty]];
   }
 
-  // ── right → left: sequential forward ──────────────────────
-  if (exitSide === 'right' && sx < tx) {
-    const midX = (sx + tx) / 2;
-    return [[sx, sy], [midX, sy], [midX, ty], [tx, ty]];
-  }
-
-  // ── backward sequential: route above title bar ────────────────
-  const topY = TITLE_H - 22;
-  return [[sx, sy], [sx + 18, sy], [sx + 18, topY], [tx - 18, topY], [tx - 18, ty], [tx, ty]];
+  // ── Horizontal exit → vertical entry (top/bottom): horizontal-first 1-bend ──
+  return [[sx, sy], [tx, sy], [tx, ty]];
 }
