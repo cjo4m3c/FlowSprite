@@ -248,12 +248,17 @@ function buildFlow(rows) {
   };
 }
 
-/** Detect gateway type from flow annotation keywords. Returns 'xor' | 'and' | null. */
+/**
+ * Detect gateway type from flow annotation keywords. Returns 'xor' | 'and' | null.
+ *
+ * NOTE: 迴圈返回（「若未通過則返回…若通過則序列流向…」）不視為 gateway，
+ * 因為使用者的業務模型將其當成「具迴圈行為的一般任務」，不應強制 `_g` 尾碼。
+ * 此處用於 validateNumbering；parser 的 detectGatewayType 仍會把 loop conditions
+ * 視為路由資訊（所以流程圖渲染與連線不受影響），只是 L4 編號規則鬆綁。
+ */
 function detectGatewayFromText(flowText) {
   if (/並行分支至/.test(flowText) || /並行合併來自/.test(flowText)) return 'and';
-  if (/條件分支至/.test(flowText)
-   || /若未通過則返回[\s\S]*若通過則序列流向/.test(flowText)
-   || /條件合併來自多個分支/.test(flowText)) return 'xor';
+  if (/條件分支至/.test(flowText) || /條件合併來自多個分支/.test(flowText)) return 'xor';
   return null;
 }
 
