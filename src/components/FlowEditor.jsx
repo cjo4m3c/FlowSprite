@@ -238,9 +238,9 @@ export default function FlowEditor({ flow, onBack, onSave }) {
   }
 
   return (
-    <div className="min-h-screen" style={{ background: '#F3F4F6' }}>
+    <div className="min-h-screen" style={{ background: '#F5F8FC' }}>
       <header className="px-6 py-3 shadow-md flex items-center gap-4 sticky top-0 z-10"
-        style={{ background: '#4A5240', color: 'white' }}>
+        style={{ background: '#2A5598', color: 'white' }}>
         <button onClick={onBack} className="opacity-70 hover:opacity-100 text-sm flex-shrink-0">← 返回</button>
         <img
           src={`${import.meta.env.BASE_URL}logo.png`}
@@ -269,7 +269,7 @@ export default function FlowEditor({ flow, onBack, onSave }) {
           <button
             onClick={handleSave}
             className="px-4 py-1.5 text-sm rounded font-medium transition-colors"
-            style={{ background: hasChanges ? '#2A52BE' : '#6B7280', color: 'white' }}>
+            style={{ background: hasChanges ? '#7AB5DD' : '#6B7280', color: hasChanges ? '#1E4677' : 'white' }}>
             儲存
           </button>
         </div>
@@ -350,7 +350,7 @@ export default function FlowEditor({ flow, onBack, onSave }) {
                     <select value={role.type}
                       onChange={e => patch({ roles: liveFlow.roles.map(r => r.id === role.id ? { ...r, type: e.target.value } : r) })}
                       className="px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none"
-                      style={{ background: role.type === 'external' ? '#16982B' : '#2A52BE', color: 'white' }}>
+                      style={{ background: role.type === 'external' ? '#5B8AC9' : '#2A5598', color: 'white' }}>
                       <option value="internal">內部角色</option>
                       <option value="external">外部角色</option>
                     </select>

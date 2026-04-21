@@ -11,6 +11,22 @@ import { useState } from 'react';
 const CHANGELOG = [
   {
     date: '2026-04-21',
+    title: '全站視覺改版：藍色主題',
+    items: [
+      '套用統一藍色設計系統，取代原本的墨綠標題列 + 雜色按鈕',
+      '色票：主色 `#2A5598`、中藍 `#3470B5`、淡藍 `#7AB5DD`、極淡藍底 `#E8F1F9`、頁面背景 `#F5F8FC`',
+      '所有頁首（Dashboard / FlowEditor / Wizard）改為主色藍底',
+      '「規則說明」「更新紀錄」按鈕改為中藍實心底，hover 轉淡藍——不再需要 hover 才能找到',
+      '主要按鈕（新增 L3 活動、儲存、儲存並完成、批量下載）改用主色藍',
+      '次要按鈕（上傳 Excel、下載 Excel、下一步、匯出 PNG）改用中藍',
+      '活動卡片內 PNG / drawio / Excel 三色按鈕改為 sky / blue / cyan 三層藍區分',
+      '泳道圖內部色（內外角色頭、標題列）同步調整：內部 `#2A5598`、外部 `#5B8AC9`、淡藍泳道 `#F0F6FB`',
+      '捲軸顏色改為藍色系（`#7AB5DD` → `#3470B5`）',
+      '狀態色保留：刪除紅、星星黃、未儲存橘、PNG 進度黃',
+    ],
+  },
+  {
+    date: '2026-04-21',
     title: '程式碼清理 + UX 小修',
     items: [
       '移除未使用的 `js-yaml`、`jszip` 兩個 runtime 依賴，縮小安裝體積',
@@ -343,7 +359,10 @@ export default function ChangelogPanel() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="px-3 py-2 rounded-lg border border-gray-300 text-gray-600 text-sm hover:bg-gray-100 transition-colors"
+        className="px-3 py-2 rounded-lg text-white text-sm font-medium transition-colors"
+        style={{ background: '#3470B5' }}
+        onMouseEnter={e => e.currentTarget.style.background = '#5B8AC9'}
+        onMouseLeave={e => e.currentTarget.style.background = '#3470B5'}
         title="查看版本更新紀錄">
         更新紀錄
       </button>
@@ -375,8 +394,10 @@ export default function ChangelogPanel() {
             {/* Footer */}
             <div className="px-6 py-3 border-t border-gray-100 flex justify-end">
               <button onClick={() => setOpen(false)}
-                className="px-5 py-2 rounded-lg text-white text-sm font-medium"
-                style={{ background: '#4A5240' }}>
+                className="px-5 py-2 rounded-lg text-white text-sm font-medium transition-colors"
+                style={{ background: '#2A5598' }}
+                onMouseEnter={e => e.currentTarget.style.background = '#1E4677'}
+                onMouseLeave={e => e.currentTarget.style.background = '#2A5598'}>
                 關閉
               </button>
             </div>
