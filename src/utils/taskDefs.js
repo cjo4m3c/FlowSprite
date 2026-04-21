@@ -23,7 +23,7 @@ export const L4_START_PATTERN    = /^\d+-\d+-\d+-0$/;
 export const L4_END_PATTERN      = /^\d+-\d+-\d+-99$/;
 export const L4_GATEWAY_PATTERN  = /^\d+-\d+-\d+-\d+_g\d*$/;
 
-// ── Constants ────────────────────────────────────────────
+// ── Constants ─────────────────────────────────────────────────────
 export const CONNECTION_TYPES = [
   { value: 'sequence',           label: '序列流向' },
   { value: 'conditional-branch', label: '條件分支' },
@@ -69,7 +69,7 @@ export const CONN_ROW_BG = {
   'loop-return':        '#F5F3FF',
 };
 
-// ── Factories ─────────────────────────────────────────────
+// ── Factories ─────────────────────────────────────────────────────
 export function makeRole() {
   return { id: generateId(), name: '', type: 'internal' };
 }
@@ -89,7 +89,7 @@ export function makeCondition(label = '') {
   return { id: generateId(), label, nextTaskId: '' };
 }
 
-// ── Task normalization ────────────────────────────────────
+// ── Task normalization ────────────────────────────────────────────
 /** Infer connectionType from legacy task data (for existing saved flows) */
 export function normalizeTask(task) {
   if (task.connectionType) return task;
@@ -171,7 +171,7 @@ export function applySequentialDefaults(tasks) {
   });
 }
 
-// ── Display helpers ────────────────────────────────────
+// ── Display helpers ───────────────────────────────────────────────
 /** Compute display labels (e.g. "1-1-1-1") for each task */
 export function computeDisplayLabels(tasks, l3Number) {
   const labels = {};
