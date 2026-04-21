@@ -11,6 +11,17 @@ import { useState } from 'react';
 const CHANGELOG = [
   {
     date: '2026-04-21',
+    title: '流程圖連線：複雜情境智慧端點分配',
+    items: [
+      '閘道有多個 outgoing 條件時，依每個條件目標的相對位置自動挑選不同出口端點（top / right / bottom / left），避免同側多條線重疊',
+      '規則：forward-adjacent 優先 right、forward-skip 優先 top（上方通道）、down-right 優先 bottom、backward/loop-back 優先 top（上方繞回）',
+      '當閘道被多條 incoming 打到時，也依來源方向在 4 個入口端點間重新分配（Phase 2）',
+      '`routeArrow` 擴充支援完整 16 種 (exit, entry) 組合：corridor（平行）、1-bend（垂直↔水平）、L-path（多層泳道）',
+      '簡單案例（單一 fork、線性 task）行為保持不變，只在複雜閘道場景產生新的路由決策',
+    ],
+  },
+  {
+    date: '2026-04-21',
     title: '全站視覺改版：藍色主題',
     items: [
       '套用統一藍色設計系統，取代原本的墨綠標題列 + 雜色按鈕',
