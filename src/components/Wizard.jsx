@@ -416,9 +416,7 @@ function validate(step, data) {
         }).length;
         if (incomingCount < 2) errs.push(`${label}：合併節點需要至少 2 個來源指向它`);
       } else if (ct === 'loop-return') {
-        const conds = t.conditions || [];
-        if (!conds[0]?.nextTaskId) errs.push(`${label}：請選擇「若未通過」的返回目標`);
-        if (!conds[1]?.nextTaskId) errs.push(`${label}：請選擇「若通過」的繼續目標`);
+        if (!t.nextTaskIds?.[0]) errs.push(`${label}：請選擇「迴圈返回至」的目標任務`);
       }
     });
 
@@ -437,7 +435,7 @@ function validate(step, data) {
         const c0 = t.conditions?.[0];
         if (c0?.nextTaskId) reachable.add(c0.nextTaskId);
       } else if (ct === 'loop-return') {
-        (t.conditions || []).forEach(c => { if (c.nextTaskId) reachable.add(c.nextTaskId); });
+        (t.nextTaskIds || []).filter(Boolean).forEach(id => reachable.add(id));
       } else {
         (t.nextTaskIds || []).filter(Boolean).forEach(id => reachable.add(id));
       }

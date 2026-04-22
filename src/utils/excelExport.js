@@ -83,12 +83,10 @@ export function generateFlowAnnotation(task, tasks, l4Map) {
   }
 
   if (ct === 'loop-return') {
-    const conds = task.conditions || [];
-    const c0 = conds[0], c1 = conds[1];
-    const n0 = c0?.nextTaskId ? l4Map[c0.nextTaskId] : '';
-    const n1 = c1?.nextTaskId ? l4Map[c1.nextTaskId] : '';
+    const backId = task.nextTaskIds?.[0];
+    const backNum = backId && taskById[backId] ? l4Map[backId] : '';
     const desc = task.loopDescription?.trim();
-    const base = `條件判斷：若未通過則返回 ${n0}，若通過則序列流向 ${n1}`;
+    const base = backNum ? `迴圈返回至 ${backNum}` : '迴圈返回';
     return desc ? `${base}（${desc}）` : base;
   }
 

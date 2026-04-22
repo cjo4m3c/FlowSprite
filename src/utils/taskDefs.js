@@ -92,7 +92,7 @@ export function makeCondition(label = '') {
 // ── Task normalization ────────────────────────────────────────────
 /** Infer connectionType from legacy task data (for existing saved flows) */
 export function normalizeTask(task) {
-  if (task.connectionType) return task;
+  if (task.connectionType) return migrateLoopReturn(task);
   let connectionType = 'sequence';
   let shapeType = 'task';
   if (task.type === 'start') { connectionType = 'start'; }
@@ -117,22 +117,49 @@ export function normalizeTask(task) {
     conditions = nextTaskIds.filter(Boolean).map(id => ({ id: generateId(), label: '', nextTaskId: id }));
     nextTaskIds = [];
   }
-  return {
+  return migrateLoopReturn({
     ...task, connectionType, shapeType, conditions, nextTaskIds,
     subprocessName: task.subprocessName || '', breakpointReason: task.breakpointReason || '',
+  });
+}
+
+/**
+ * Migrate legacy loop-return data model:
+ *   OLD: { type:'gateway', connectionType:'loop-return',
+ *          conditions:[{label:'若未通過',nextTaskId:X},{label:'若通過',nextTaskId:Y}] }
+ *   NEW: { type:'task', connectionType:'loop-return', nextTaskIds:[X, Y], conditions:[] }
+ *
+ * Task keeps rectangle shape; the back target X and forward target Y merge
+ * into nextTaskIds. New Wizard UI only edits nextTaskIds[0] (the back
+ * target); forward continuation (if any) stays in nextTaskIds[1+] and is
+ * handled as a regular sequential edge.
+ */
+function migrateLoopReturn(task) {
+  if (task.connectionType !== 'loop-return') return task;
+  if (task.type === 'task' && Array.isArray(task.nextTaskIds)) return task;  // already migrated
+  const conds = task.conditions || [];
+  const targets = conds.map(c => c.nextTaskId).filter(Boolean);
+  return {
+    ...task,
+    type: 'task',
+    conditions: [],
+    nextTaskIds: targets.length ? targets : [''],
   };
 }
 
 /** Apply a new connectionType, resetting connections appropriately */
 export function applyConnectionType(task, newCT) {
   const st = task.shapeType || 'task';
+  // loop-return is NOT a gateway — it's a regular task with a back-edge
+  // stored in nextTaskIds[0] (single target, like 迴圈返回至 X syntax).
   const typeMap = {
     sequence: st, subprocess: 'task', start: 'start', end: 'end', breakpoint: 'end',
     'conditional-branch': 'gateway', 'parallel-branch': 'gateway',
-    'parallel-merge': 'gateway', 'conditional-merge': 'gateway', 'loop-return': 'gateway',
+    'parallel-merge': 'gateway', 'conditional-merge': 'gateway',
+    'loop-return': 'task',
   };
   const gwMap = {
-    'conditional-branch': 'xor', 'conditional-merge': 'xor', 'loop-return': 'xor',
+    'conditional-branch': 'xor', 'conditional-merge': 'xor',
     'parallel-branch': 'and', 'parallel-merge': 'and',
   };
   let conditions = [], nextTaskIds = [];
@@ -146,11 +173,10 @@ export function applyConnectionType(task, newCT) {
   } else if (newCT === 'parallel-merge' || newCT === 'conditional-merge') {
     conditions = task.conditions?.length ? [task.conditions[0]] : [makeCondition()];
   } else if (newCT === 'loop-return') {
-    const ex = task.conditions || [];
-    conditions = [
-      { id: ex[0]?.id || generateId(), label: '若未通過', nextTaskId: ex[0]?.nextTaskId || '' },
-      { id: ex[1]?.id || generateId(), label: '若通過',   nextTaskId: ex[1]?.nextTaskId || '' },
-    ];
+    // Prefer existing nextTaskIds[0] (new model) or fallback to legacy
+    // conditions[0].nextTaskId (若未通過 = back target).
+    const back = (task.nextTaskIds?.[0]) || (task.conditions?.[0]?.nextTaskId) || '';
+    nextTaskIds = [back];
   }
   return {
     ...task, connectionType: newCT, shapeType: st,

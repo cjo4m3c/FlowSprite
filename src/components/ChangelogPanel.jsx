@@ -11,6 +11,19 @@ import { useState } from 'react';
 const CHANGELOG = [
   {
     date: '2026-04-21',
+    title: '迴圈返回 UI 對齊新規則：單一目標欄位',
+    items: [
+      'Wizard / FlowEditor 的「迴圈返回」連線類型原本用「若未通過 / 若通過」兩個條件欄位（舊的閘道式模型）',
+      '改為**單一「迴圈返回至」目標欄位**，對齊 Excel 語法 `迴圈返回至 X`',
+      'Task type 從 `gateway` 改回 `task`（不再是菱形閘道，保持矩形）',
+      '資料模型：`conditions: []` + `nextTaskIds: [backTarget]`（單一 back-edge）',
+      '舊資料自動遷移：載入時 `normalizeTask` 會把 legacy `gateway + 2 conditions` 轉成 `task + nextTaskIds`',
+      'Excel 匯出：`generateFlowAnnotation` 輸出 `迴圈返回至 X` 取代舊的「條件判斷：若未通過則返回…若通過則序列流向…」',
+      'Wizard 驗證：只檢查 `nextTaskIds[0]` 存在（不再要求兩個分支）',
+    ],
+  },
+  {
+    date: '2026-04-21',
     title: 'Phase 3b：task backward 也避開 top corridor 衝突',
     items: [
       '原本 Phase 3 corridor 衝突偵測只管閘道（gateway→X），不看 task→task 的 backward 連線',
