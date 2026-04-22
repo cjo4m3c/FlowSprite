@@ -11,6 +11,21 @@ import { useState } from 'react';
 const CHANGELOG = [
   {
     date: '2026-04-22',
+claude/top-corridor-crossing-avoidance
+claude/top-corridor-crossing-avoidance
+    title: 'Top corridor 跨越偵測：後發生連線會讓路避免視覺 X',
+    items: [
+      '使用者 case：`5-1-4-2_g`「不可達成」top-skip 到 `5-1-4-4`（col [3..5]）已登記；後處理的 `5-1-4-3 → end`（source col=4）若也走 top，vertical exit 會跟先前的水平 corridor 交叉成 X',
+      '新規則：Phase 3b / 3c 處理新 top→top 前，先查 source 或 target col 是否**嚴格在**既有 top corridor 範圍內；若是，改走 bottom corridor',
+      '先發生連線（gateway conditions → Phase 1 → Phase 3 已登記）永遠不動；後發生的 task backward / forward 在有衝突時讓路',
+      '沒衝突時行為不變，slot 系統繼續把多條 top corridor 分到不同 y-level',
+    ],
+  },
+  {
+    date: '2026-04-22',
+
+main
+
 claude/infer-entry-corridor-backward
     title: 'Loop-back 從 backward-up 優先走下方 corridor',
     items: [
@@ -18,6 +33,7 @@ claude/infer-entry-corridor-backward
       '改法 1：`getExitPriority` 對 `(dr<0, dc<0)` backward-up 情境優先 bottom（讓 path 在 source 附近就近繞回，不用爬到頂部）',
       '改法 2：`inferEntrySide` 將「backward + vertical exit」一般化為 `entry = exitSide`（走 corridor 後從同側進入目標），避開 target 的 horizontal ports',
 =
+main
     title: 'Hover 高亮：方向色分流 + 連線反向高亮端點',
     items: [
       '**連線方向感知配色**：hover 元件時，**Outgoing（此元件指出去）**用 primary 深藍 `#2A5598`；**Incoming（指進此元件）**用 light 淡藍 `#7AB5DD`；方向一眼看清',
