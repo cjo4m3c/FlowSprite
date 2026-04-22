@@ -28,54 +28,64 @@ const HIERARCHY = [
   { level: 'L5', name: '步驟',     desc: 'L4 任務下的操作細節（預留，尚未開放）' },
 ];
 
+const NUMBERING = [
+  { kind: 'L3 活動編號',   rule: '`\\d+-\\d+-\\d+`（三段，僅接受 `-` 分隔）',         example: '`1-1-5`、`5-4-11`' },
+  { kind: 'L4 任務編號',   rule: '`L3編號-順號`，**只對一般任務**從 1 流水計數',      example: '`1-1-5-1`、`1-1-5-2`、`1-1-5-3`' },
+  { kind: '開始事件',       rule: '尾碼必為 `0`',                                         example: '`1-1-5-0`' },
+  { kind: '結束事件',       rule: '尾碼必為 `99`',                                        example: '`1-1-5-99`' },
+  { kind: '閘道（XOR/AND/OR）', rule: '前一任務編號 + `_g`（單一）或 `_g1`、`_g2`、`_g3`…（連續多個）；前綴必對應既有 L4 任務', example: '`1-1-5-2_g`、`1-1-5-2_g2`' },
+  { kind: '迴圈返回',       rule: '不是閘道元件，不用 `_g`；以任務本身編號 + `nextTaskIds = [前面任務]`', example: '`1-1-5-4`（上面任務名可標註「迴圈返回至 1-1-5-2」）' },
+  { kind: '子流程調用',     rule: '不佔順號，任務名稱可標註「[子流程] 調用子流程 X-Y-Z」，X-Y-Z 為被調用 L3 活動編號', example: '`5-3-1-1`，調用 `5-3-2`' },
+];
+
 const ELEMENTS = [
   {
     type: '開始事件',
     shape: '圓形（空心）',
     color: '#D1FAE5 / 綠框',
-    purpose: '流程的唯一起點。每張圖必須有且僅能有一個。流程設定選「流程開始」。',
+    purpose: '流程的唯一起點，每張圖必須有且僅能有一個。L4 編號尾碼必為 `0`（範例 `1-1-5-0`）。',
   },
   {
     type: '結束事件',
     shape: '圓形（實心深色）',
     color: '#111827 填色',
-    purpose: '流程的終點。每張圖必須至少有一個。流程設定選「流程結束」或「流程斷點」。',
+    purpose: '流程的終點，每張圖至少有一個。L4 編號尾碼必為 `99`（範例 `1-1-5-99`）。',
   },
   {
     type: 'L4 任務',
     shape: '圓角矩形',
     color: '#DBEAFE / 藍框',
-    purpose: '一般業務步驟，自動帶入 L4 編號（L3編號-序號，例如 1-1-1-1）。流程設定選「序列流向」或「子流程調用」或「迴圈返回」。',
+    purpose: '一般業務步驟。編號 `L3-順號`（例 `1-1-5-1`），**只有一般任務會佔用流水號**（開始 / 結束 / 閘道都不佔）。流程設定選「序列流向」或「迴圈返回」。',
   },
   {
     type: '互動任務',
     shape: '圓角矩形（淺紫底）',
     color: '#EDE9FE / 藍框',
-    purpose: '涉及系統互動或跨角色協作的任務節點。流程設定同 L4 任務。',
+    purpose: '涉及系統互動或跨角色協作的任務節點，流程設定同 L4 任務。',
   },
   {
-    type: 'L3 活動',
+    type: 'L3 活動（子流程調用）',
     shape: '書端矩形（左右側垂直分隔線）',
     color: '#FFFFFF / 深灰框',
-    purpose: '引用另一張 L3 活動（Call Activity / BPMN 書端圖形）。流程設定選「序列流向」或「子流程調用」。',
+    purpose: '調用另一個 L3 活動（Call Activity）。圖上顯示「[子流程]」+ 被調用的 L3 編號（例 `5-3-2`）。Excel 標記 `調用子流程 5-3-2`。',
   },
   {
     type: '排他閘道（XOR）',
     shape: '菱形（內含 × 符號）',
     color: '#FEF3C7 / 橙框',
-    purpose: '條件分支：每次只走一個路徑。設定「條件分支」（每條件需標籤）或「條件合併」（匯入多條件分支）。不帶 L4 編號。',
+    purpose: '條件分支：每次只走一個路徑。**L4 編號 = 前一任務 + `_g`**（連續多個用 `_g1`、`_g2`…，例 `1-1-5-2_g`）。Excel 標記：`條件分支至 …`。',
   },
   {
     type: '並行閘道（AND）',
     shape: '菱形（內含 + 符號）',
     color: '#FEF3C7 / 橙框',
-    purpose: '並行分支：同時啟動所有路徑。設定「並行分支」（無需條件標籤）或「並行合併」（匯入多並行分支）。不帶 L4 編號。',
+    purpose: '並行分支：同時啟動所有路徑。編號規則同 XOR（`_g` 後綴）。Excel 標記：`並行分支至 …`。',
   },
   {
     type: '包容閘道（OR）',
     shape: '菱形（內含 ○ 符號）',
     color: '#FEF3C7 / 橙框',
-    purpose: '包容分支：一或多條路徑同時啟動（由條件決定）。設定同 XOR 條件分支，條件標籤說明觸發條件。不帶 L4 編號。',
+    purpose: '包容分支：一或多條路徑同時啟動（由條件決定）。編號規則同 XOR。',
   },
 ];
 
@@ -107,6 +117,18 @@ const VALIDATION = [
   {
     rule: '條件分支標籤必填',
     detail: '流程設定為「條件分支」的節點，每個分支條件都必須填寫標籤文字。並行分支（AND 閘道）不需要條件標籤。',
+  },
+  {
+    rule: '迴圈返回必須指定目標',
+    detail: '流程設定為「迴圈返回」的任務必須選擇「迴圈返回至」的目標任務（通常是較前面的任務），否則驗證不通過。',
+  },
+  {
+    rule: '閘道 L4 編號必須以 `_g` 結尾',
+    detail: 'XOR / AND / OR 閘道的 L4 編號必須是 `前一任務編號_g`（單一）或 `_g1`、`_g2`、`_g3`…（連續多個）。Excel 匯入時若閘道列缺 `_g` 尾碼將被擋下。',
+  },
+  {
+    rule: '閘道前綴必對應既有 L4 任務',
+    detail: '閘道編號 `X_g` 的前綴 `X` 必須是同一份 Excel 中存在的 L4 任務。若 `X_g` 沒有對應任務，匯入會被擋下。',
   },
 ];
 
@@ -145,27 +167,33 @@ const CONNECTIONS = [
   },
   {
     title: '子流程調用',
-    desc: '調用另一個獨立的子流程。填寫子流程名稱，並設定子流程完成後返回的下一步任務。形狀可選 L4 任務、L3 活動。任務關聯說明自動產生「調用子流程 X，返回後序列流向 Y」。',
+    desc: '調用另一個獨立的 L3 子流程。填寫**子流程 L3 編號**（例 `5-3-2`），並設定子流程完成後返回的下一步任務。**此任務自動繪為 L3 活動元件**（雙邊書擋矩形）。任務關聯說明自動產生「調用子流程 5-3-2，返回後序列流向 Y」。',
   },
   {
-    title: '迴圈返回（XOR 迴圈）',
-    desc: '條件判斷後兩種出口：若「未通過」則返回之前的任務（往前跳轉）；若「通過」則繼續往下。可填寫迴圈條件說明。任務關聯說明自動產生「條件判斷：若未通過則返回 X，若通過則序列流向 Y」。',
+    title: '迴圈返回',
+    desc: '**迴圈返回不是獨立閘道元件**，而是一般任務上加一條 back-edge。只需選擇「迴圈返回至」的目標任務（單一）；如需同時保留正向繼續，應改用「條件分支」（排他閘道）。任務關聯說明自動產生「迴圈返回至 X」。',
   },
 ];
 
 /**
- * ROUTING RULES — sync with getGatewayExitEntry() in layout.js
+ * ROUTING RULES — sync with getExitPriority / inferEntrySide in layout.js.
  *
  * dr = toRow - fromRow (正 = 下方角色, 負 = 上方角色)
- * dc = toCol - fromCol (正 = 右邊欄位, 負 = 左邊/往前)
+ * dc = toCol - fromCol (正 = 右邊欄位, 負 = 左邊 / 往前)
+ *
+ * Smart routing picks each閘道 outgoing 端點 from a priority list, and
+ * Phase 3 rebalances across gateways so multiple lines don't share the
+ * same corridor.
  */
 const ROUTING = [
-  { condition: 'dr=0, dc=1（同角色，相鄰向右）',   exit: '右',   entry: '左',   note: '直線水平連線' },
-  { condition: 'dr=0, dc≠1（同角色，跳欄或往前）', exit: '下',   entry: '下',   note: '於泳道下方繞行；多條時垂直錯開（slot 制）' },
-  { condition: 'dr<0, dc=1（上方角色，相鄰向右）',  exit: '上',   entry: '左',   note: '折線：先往上再往左' },
-  { condition: 'dr<0, dc≠1（上方角色，其他）',      exit: '上',   entry: '上',   note: '從兩節點上方走廊通過' },
-  { condition: 'dr>0, dc=1（下方角色，相鄰向右）',  exit: '下',   entry: '左',   note: '折線：先往下再往左' },
-  { condition: 'dr>0, dc≠1（下方角色，其他）',      exit: '下',   entry: '下',   note: '於下方角色泳道底部繞行' },
+  { condition: 'dr=0, dc=1（同列相鄰向右）',        exit: '右 → 左',       note: '主要順向連線，水平 midX 折線' },
+  { condition: 'dr=0, dc>1（同列跳欄向右）',        exit: '上 → 左',       note: '走上方 corridor 跳過中間元件' },
+  { condition: 'dr=0, dc<0（同列往前 / loop-back）', exit: '上 → 上',       note: '上方 corridor 回到前面任務；若衝突改走下方' },
+  { condition: 'dr<0, 任意 dc（目標在上方）',         exit: '上 → 左 / 上',   note: '目標同欄時進對側 top；其他走 L 形' },
+  { condition: 'dr>0, 任意 dc（目標在下方）',         exit: '下 → 左 / 下',   note: '目標同欄時進對側 top；其他走 L 形' },
+  { condition: '同閘道多出口衝突',                   exit: '依優先順序分散',  note: 'Phase 1：每條件挑第一個未被 sibling 佔用的側' },
+  { condition: '跨閘道 corridor 衝突',               exit: '後處理讓步',     note: 'Phase 3：短距離先留，長距離換備選側 / 下方 slot' },
+  { condition: '閘道自身 incoming 端點已被佔用',      exit: '避開',           note: 'outgoing 會跳過 incoming 已佔的側，避免共用 port' },
 ];
 
 const EXPORTS = [
@@ -257,6 +285,31 @@ export default function HelpPanel() {
                     ))}
                   </tbody>
                 </table>
+              </Section>
+
+              {/* ── 1b. Numbering ── */}
+              <Section title="編號規則 Numbering">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-gray-500 text-xs">
+                      <th className="pb-1 w-36">類型</th>
+                      <th className="pb-1">規則</th>
+                      <th className="pb-1 w-44">範例</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {NUMBERING.map(n => (
+                      <tr key={n.kind} className="border-t border-gray-100">
+                        <td className="py-1.5 font-medium text-gray-700">{n.kind}</td>
+                        <td className="py-1.5 text-gray-600">{n.rule}</td>
+                        <td className="py-1.5 font-mono text-xs text-indigo-600">{n.example}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <p className="text-xs text-gray-400 mt-2">
+                  Excel 匯入時會驗證所有編號格式；舊資料（點分隔 / 閘道缺 `_g`）載入時自動遷移為新格式。
+                </p>
               </Section>
 
               {/* ── 2. Elements ── */}
