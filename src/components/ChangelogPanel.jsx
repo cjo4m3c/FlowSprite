@@ -10,7 +10,7 @@ import { useState } from 'react';
 
 const CHANGELOG = [
   {
-    date: '2026-04-23',
+    date: '2026-04-22',
     title: '閘道多條件端點分散 + corridor 優先端點不混用 + 同 target 巢狀 slot + 泳道色塊補滿',
     items: [
       '**閘道 4 個以上條件的 fan-out 重疊**（使用者：「指向 5-1-2-7 和 5-1-2-10 的連線幾乎完全重疊」）：原因是 `getExitPriority` 對多數方向只回傳 3 個優先端點（top/right/bottom），第 4 條件 fallback 回第一個（重複佔用 top），從閘道發出的兩條線疊在同一個 port',
@@ -24,7 +24,7 @@ const CHANGELOG = [
     ],
   },
   {
-    date: '2026-04-23',
+    date: '2026-04-22',
     title: 'Phase 3d 端點混用判斷修正 + 文件同步',
     items: [
       '**Phase 3d 端點混用檢查方向錯誤**：原本寫「port 已有同方向」而非「已有相反方向」，導致 t9 → end 在 end 的 bottom 已被 t7 / t8 用作 IN 時會被誤擋（還是走預設 right→left 穿過中間任務）',
@@ -35,7 +35,7 @@ const CHANGELOG = [
     ],
   },
   {
-    date: '2026-04-23',
+    date: '2026-04-22',
     title: '流程圖編號規則：只顯示 L3 / L4；迴圈返回改新標準文字',
     items: [
       '**流程圖上的編號顯示規則重新釐清**：只有 L3 活動與 L4 任務的「正式編號」才會印在形狀上；開始（尾碼 `-0`）、結束（`-99`）、閘道（`_g` / `_g1`…）的編號僅作辨識用，不顯示在流程圖上',
