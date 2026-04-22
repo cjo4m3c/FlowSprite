@@ -489,15 +489,40 @@ export function computeLayout(flow) {
       const isBackward = (tc < fc) || (tc === fc && tr < fr);
       if (!isBackward) return;
 
-      const row = Math.min(fr, tr);
-      const minCol = Math.min(fc, tc);
-      const maxCol = Math.max(fc, tc);
-      if (hasTopConflict(row, minCol, maxCol)) {
-        taskBackwardRouting.set(`${task.id}::${toId}`, { exitSide: 'bottom', entrySide: 'bottom' });
-      } else {
-        taskBackwardRouting.set(`${task.id}::${toId}`, { exitSide: 'top', entrySide: 'top' });
-        registerTopCorridor(row, minCol, maxCol);
-      }
+      // Always use top corridor for task backward edges; slot allocation
+      // (step 6b) staggers multiple parallel edges to distinct y-levels.
+      taskBackwardRouting.set(`${task.id}::${toId}`, { exitSide: 'top', entrySide: 'top' });
+    });
+  });
+
+  // ── 4e. Phase 3c: non-gateway forward edge obstacle avoidance ────
+  //
+  // A regular task → another-task / end forward edge with dc > 1 (skips at
+  // least one column) on the same row would draw a straight right→left line
+  // that passes through every intermediate column — visually blocked by
+  // any element in between. Route such edges via the top corridor instead
+  // (unless top corridor is already taken for that span, in which case
+  // fall back to bottom → bottom with slot allocation).
+  //
+  // `taskForwardRouting` mirrors `taskBackwardRouting` and feeds step 10.
+  const taskForwardRouting = new Map();
+  tasks.forEach(task => {
+    if (task.type === 'end' || task.type === 'gateway' || task.type === 'start') return;
+    const nextIds = task.nextTaskIds?.length ? task.nextTaskIds : (task.nextTaskId ? [task.nextTaskId] : []);
+    const fr = taskRowOf[task.id], fc = taskColOf[task.id];
+    nextIds.forEach(toId => {
+      if (!toId || !taskIdSetAll.has(toId)) return;
+      if (taskBackwardRouting.has(`${task.id}::${toId}`)) return;  // backward handled already
+      const tr = taskRowOf[toId], tc = taskColOf[toId];
+      if (tr === undefined || tc === undefined) return;
+      const dc = tc - fc, dr = tr - fr;
+      // Only redirect forward edges that actually skip columns on the same row.
+      if (dr !== 0 || dc <= 1) return;
+
+      // Always route long forward edges via the top corridor; the top-slot
+      // allocation (step 6b) gives each edge a distinct y-level so multiple
+      // parallel edges stagger instead of stacking on the same line.
+      taskForwardRouting.set(`${task.id}::${toId}`, { exitSide: 'top', entrySide: 'top' });
     });
   });
 
@@ -524,10 +549,12 @@ export function computeLayout(flow) {
         }
       });
     } else if (task.type !== 'end' && task.type !== 'start') {
-      // Non-gateway backward edges that Phase 3b pushed to bottom corridor
+      // Non-gateway edges pushed to bottom corridor by Phase 3b (backward)
+      // or Phase 3c (forward with dc>1 where top corridor was already taken).
       const nextIds = task.nextTaskIds?.length ? task.nextTaskIds : (task.nextTaskId ? [task.nextTaskId] : []);
       nextIds.forEach(toId => {
-        const routing = taskBackwardRouting.get(`${task.id}::${toId}`);
+        const routing = taskBackwardRouting.get(`${task.id}::${toId}`)
+                     ?? taskForwardRouting.get(`${task.id}::${toId}`);
         if (!routing) return;
         if (routing.exitSide === 'bottom' && routing.entrySide === 'bottom') {
           const fr = taskRowOf[task.id];
@@ -551,17 +578,72 @@ export function computeLayout(flow) {
     return Math.max(BASE_LANE_H, minLaneH(bottomConnsByRow[row].length));
   });
 
+  // ── 6b. Collect top-corridor connections per row for slot allocation ──
+  // Any connection whose routing ends up as top→top occupies a horizontal
+  // segment above the lower-row lane. When several such connections share
+  // a row, they must sit on distinct y-levels (slots) so they don't stack.
+  const topConnsByRow = roles.map(() => []);
+  tasks.forEach(task => {
+    if (task.type === 'gateway') {
+      (task.conditions || []).forEach(cond => {
+        if (!cond.nextTaskId || taskRowOf[cond.nextTaskId] === undefined) return;
+        const routing = condRouting.get(`${task.id}::${cond.id}`);
+        if (!routing) return;
+        if (routing.exitSide === 'top' && routing.entrySide === 'top') {
+          const fr = taskRowOf[task.id], tr = taskRowOf[cond.nextTaskId];
+          const fc = taskColOf[task.id], tc = taskColOf[cond.nextTaskId];
+          topConnsByRow[Math.min(fr, tr)].push({
+            fromId: task.id, toId: cond.nextTaskId, span: Math.abs(tc - fc),
+          });
+        }
+      });
+    } else if (task.type !== 'end' && task.type !== 'start') {
+      const nextIds = task.nextTaskIds?.length ? task.nextTaskIds : (task.nextTaskId ? [task.nextTaskId] : []);
+      nextIds.forEach(toId => {
+        if (!toId || taskRowOf[toId] === undefined) return;
+        const routing = taskBackwardRouting.get(`${task.id}::${toId}`)
+                     ?? taskForwardRouting.get(`${task.id}::${toId}`);
+        if (!routing) return;
+        if (routing.exitSide === 'top' && routing.entrySide === 'top') {
+          const fr = taskRowOf[task.id], tr = taskRowOf[toId];
+          const fc = taskColOf[task.id], tc = taskColOf[toId];
+          topConnsByRow[Math.min(fr, tr)].push({
+            fromId: task.id, toId, span: Math.abs(tc - fc),
+          });
+        }
+      });
+    }
+  });
+  topConnsByRow.forEach(arr => arr.sort((a, b) => b.span - a.span));
+
   // ── 7. Cumulative lane top Y ─────────────────────────────────────────
+  // Reserve extra space above each lane for its top-corridor slots.
+  // Row 0 expands the title-bar gap so arrows don't collide with the title.
   const laneTopY = [];
   let y = TITLE_H;
-  roles.forEach((_, row) => { laneTopY.push(y); y += laneHeights[row]; });
+  roles.forEach((_, row) => {
+    const topSlots = topConnsByRow[row].length;
+    if (topSlots > 0) y += ROUTE_MARGIN + topSlots * ROUTE_SLOT_H;
+    laneTopY.push(y);
+    y += laneHeights[row];
+  });
 
-  // ── 8. Slot-based laneBottomY for bottom→bottom connections ───
+  // ── 8. Slot-based corridors ─────────────────────────────────────────
+  //   - bottomYMap: y-level for bottom→bottom edges (below each lane)
+  //   - topYMap: y-level for top→top edges (above each lane)
   const bottomYMap = {};
   bottomConnsByRow.forEach((arr, row) => {
     arr.forEach((conn, slotIdx) => {
       const slotY = laneTopY[row] + laneHeights[row] - ROUTE_BOTTOM_PAD - slotIdx * ROUTE_SLOT_H;
       bottomYMap[`${conn.fromId}::${conn.toId}`] = slotY;
+    });
+  });
+  const topYMap = {};
+  topConnsByRow.forEach((arr, row) => {
+    // slot 0 sits closest to the lane top; each additional slot moves upward.
+    arr.forEach((conn, slotIdx) => {
+      const slotY = laneTopY[row] - ROUTE_MARGIN - slotIdx * ROUTE_SLOT_H;
+      topYMap[`${conn.fromId}::${conn.toId}`] = slotY;
     });
   });
 
@@ -605,13 +687,15 @@ export function computeLayout(flow) {
         const { exitSide, entrySide } = condRouting.get(`${task.id}::${cond.id}`)
           ?? getGatewayExitEntry(fromPos, positions[toTask.id]);
 
-        let laneBottomY;
+        let laneBottomY, laneTopCorridorY;
         if (exitSide === 'bottom' && entrySide === 'bottom') {
           laneBottomY = bottomYMap[`${task.id}::${cond.nextTaskId}`]
             ?? (Math.max(fromPos.bottom.y, positions[toTask.id].bottom.y) + 24);
+        } else if (exitSide === 'top' && entrySide === 'top') {
+          laneTopCorridorY = topYMap[`${task.id}::${cond.nextTaskId}`];
         }
 
-        connections.push({ fromId: task.id, toId: toTask.id, label: cond.label, exitSide, entrySide, laneBottomY });
+        connections.push({ fromId: task.id, toId: toTask.id, label: cond.label, exitSide, entrySide, laneBottomY, laneTopCorridorY });
       });
 
     } else if (task.type !== 'end' && task.type !== 'gateway') {
@@ -622,23 +706,26 @@ export function computeLayout(flow) {
         if (!nextId || !taskIdSet.has(nextId)) return;
         const toTask = tasks.find(t => t.id === nextId);
         if (!toTask) return;
-        // Forward (default right→left) / backward (Phase 3b decision: top→top
-        // unless top corridor is already occupied, in which case bottom→bottom
-        // via the slot-allocated lane-bottom corridor).
-        const routing = taskBackwardRouting.get(`${task.id}::${nextId}`);
-        let exitSide, entrySide, laneBottomY;
+        // Forward short (default right→left) / backward (Phase 3b: top or
+        // bottom based on top corridor occupancy) / forward long (Phase 3c:
+        // top corridor to skip over intermediate elements).
+        const routing = taskBackwardRouting.get(`${task.id}::${nextId}`)
+                     ?? taskForwardRouting.get(`${task.id}::${nextId}`);
+        let exitSide, entrySide, laneBottomY, laneTopCorridorY;
         if (routing) {
           exitSide = routing.exitSide;
           entrySide = routing.entrySide;
           if (exitSide === 'bottom' && entrySide === 'bottom') {
             laneBottomY = bottomYMap[`${task.id}::${nextId}`]
               ?? (Math.max(fromPos.bottom.y, positions[toTask.id].bottom.y) + 24);
+          } else if (exitSide === 'top' && entrySide === 'top') {
+            laneTopCorridorY = topYMap[`${task.id}::${nextId}`];
           }
         } else {
           exitSide = 'right';
           entrySide = 'left';
         }
-        connections.push({ fromId: task.id, toId: toTask.id, label: '', exitSide, entrySide, laneBottomY });
+        connections.push({ fromId: task.id, toId: toTask.id, label: '', exitSide, entrySide, laneBottomY, laneTopCorridorY });
       });
     }
   });
@@ -657,7 +744,7 @@ export function computeLayout(flow) {
  * exitSide / entrySide: 'top' | 'right' | 'bottom' | 'left'
  * laneBottomY: pre-computed routing Y for bottom→bottom paths
  */
-export function routeArrow(fromPos, toPos, exitSide, entrySide, laneBottomY) {
+export function routeArrow(fromPos, toPos, exitSide, entrySide, laneBottomY, laneTopCorridorY) {
   const sx = fromPos[exitSide].x;
   const sy = fromPos[exitSide].y;
   const tx = toPos[entrySide].x;
@@ -674,7 +761,7 @@ export function routeArrow(fromPos, toPos, exitSide, entrySide, laneBottomY) {
     return [[sx, sy], [sx, routeY], [tx, routeY], [tx, ty]];
   }
   if (exitSide === 'top' && entrySide === 'top') {
-    const corridorY = Math.min(sy, ty) - 24;
+    const corridorY = laneTopCorridorY ?? (Math.min(sy, ty) - 24);
     return [[sx, sy], [sx, corridorY], [tx, corridorY], [tx, ty]];
   }
   if (exitSide === 'left' && entrySide === 'left') {
