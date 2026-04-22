@@ -67,7 +67,13 @@ FlowSprite/
 ├── vite.config.js                 # base = '/FlowSprite/' 跟 repo 名稱綁定
 ├── tailwind.config.js / postcss.config.js / index.html
 ├── .github/workflows/deploy.yml   # GitHub Actions 自動部署
-├── .claude/skills/ship-feature.md # PR 前檢查清單 skill（僅供 AI 使用）
+├── .claude/
+│   └── skills/                # AI 重用流程（/<skill-name> 可觸發）
+│       ├── ship-feature.md    # PR 前檢查清單 + squash merge + 回報
+│       ├── sync-main.md       # 使用者合併後本地同步 + 清 branch
+│       ├── doc-audit.md       # Changelog / HelpPanel / README / HANDOVER 對齊性檢查
+│       ├── trace-layout.md    # 流程圖路由 node trace 樣板
+│       └── ui-rules.md        # 藍色主題色票、按鈕 / banner / modal pattern
 └── src/
     ├── main.jsx                   # React entry
     ├── App.jsx                    # Route: Dashboard / Wizard / FlowEditor
@@ -83,7 +89,7 @@ FlowSprite/
     │   └── ChangelogPanel.jsx     # 版本更新紀錄 Modal（每次功能後加一筆）
     ├── diagram/
     │   ├── constants.js           # LAYOUT 尺寸 + COLORS 主題色
-    │   └── layout.js              # 核心：DAG 欄位分配 + smart routing（~500 行，複雜度最高）
+    │   └── layout.js              # 核心：DAG 欄位分配 + smart routing + corridor slot 系統（~800 行，複雜度最高）
     └── utils/
         ├── taskDefs.js            # 編號 regex、connectionType 常數、makeTask 等工廠函式
         ├── storage.js             # localStorage 讀寫 + 載入時遷移（點→橫線、閘道補 _g）
@@ -148,7 +154,7 @@ FlowSprite/
 1. GitHub `cjo4m3c/FlowSprite` 新增接手人為 collaborator（或 transfer ownership）
 2. 接手人安裝 Claude Code 或同類工具
 3. 把 `CLAUDE.md` + `HANDOVER.md` + `src/components/ChangelogPanel.jsx`（變更歷史）給他
-4. 提醒他 `/ship-feature` skill（定義在 `.claude/skills/ship-feature.md`）是 PR 前檢查清單
+4. 提醒他 `.claude/skills/` 底下的 5 個重用流程（`/ship-feature`、`/sync-main`、`/doc-audit`、`/trace-layout`、`/ui-rules`）
 
 **限制**：他的 AI 設定中應保留「只能操作 `cjo4m3c/FlowSprite`」的 scope 限制、squash merge 預設、不改 deploy workflow。
 
@@ -203,8 +209,9 @@ FlowSprite/
 - [ ] 告知 `main` push 自動部署、只能 squash merge
 - [ ] 告知 backlog：
   - 多人協作（需要後端，大工程）
-  - 複雜閘道 corridor 邊界 case（Phase 3 已處理常規情境，邊界問題若再出現再處理）
-  - 可考慮把 `layout.js` 拆成多個模組（目前 ~500 行但邏輯很集中）
+  - 閘道 >4 條件分支時 port 共享（需要 port 子位置偏移架構）
+  - 嚴格按 target 順序排 corridor slot（目前按 span 長短，不是 target 位置）
+  - 可考慮把 `layout.js` 拆成多個模組（目前 ~800 行但邏輯很集中）
 
 ---
 
@@ -212,7 +219,7 @@ FlowSprite/
 
 - **無後端**：資料無法跨裝置、無版本歷史（只有使用者自己下載 Excel 當備份）
 - **瀏覽器限制**：Excel/PNG 匯出受 `html-to-image` + browser memory 限制，非常大的流程圖可能產出失敗
-- **`layout.js` 龐大**：連線路由有多個 phase，改動容易牽一髮動全身；改前先讀 PR #16~#22 的 description 建立脈絡
+- **`layout.js` 龐大**：連線路由有多個 phase（Phase 1 sibling 分配 → Phase 2 target entry 分配 → Phase 3 跨閘道衝突 → Phase 3b 任務 backward → Phase 3c 任務 forward 長跳欄 → 上下 corridor slot 分配），改動容易牽一髮動全身；改前先讀 PR #16~#32 的 description 建立脈絡
 - **中文 regex 敏感**：`excelImport.js` 用中文關鍵字（`條件分支至` 等），對全形/半形、多餘空白、標點符號變體敏感
 - **無自動化測試**：驗證靠 `npm run build` + 手動瀏覽器測試 + `node trace.mjs` 臨時腳本
 
