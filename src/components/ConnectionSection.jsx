@@ -138,40 +138,28 @@ export default function ConnectionSection({ task, allTasks, displayLabels, onUpd
   }
 
   if (ct === 'loop-return') {
-    const conds = task.conditions?.length >= 2 ? task.conditions : [
-      { id: generateId(), label: '若未通過', nextTaskId: '' },
-      { id: generateId(), label: '若通過',   nextTaskId: '' },
-    ];
+    // New single-target model: loop-return is a regular task with a
+    // back-edge in nextTaskIds[0]. No conditional branches; forward
+    // continuation (if any) comes from a preceding gateway, not here.
+    const backTarget = task.nextTaskIds?.[0] || '';
     return (
       <div className="flex flex-col gap-1.5 mt-1.5">
         <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-500 flex-shrink-0">條件判斷說明</span>
+          <span className="text-xs text-gray-500 flex-shrink-0">迴圈說明</span>
           <input className={inp} value={task.loopDescription || ''}
-            placeholder="說明判斷條件（選填）"
+            placeholder="說明迴圈觸發條件（選填）"
             onChange={e => onUpdate({ ...task, loopDescription: e.target.value })} />
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-red-500 w-16 flex-shrink-0">若未通過 ↺</span>
-          <select value={conds[0]?.nextTaskId || ''} className={sel}
-            onChange={e => {
-              const updated = [...conds];
-              updated[0] = { ...updated[0], nextTaskId: e.target.value };
-              onUpdate({ ...task, conditions: updated });
-            }}>
-            <option value="">選擇返回目標</option>{renderOpts()}
+          <span className="text-xs text-red-500 w-20 flex-shrink-0">迴圈返回至 ↺</span>
+          <select value={backTarget} className={sel}
+            onChange={e => onUpdate({ ...task, nextTaskIds: [e.target.value] })}>
+            <option value="">選擇返回目標任務</option>{renderOpts()}
           </select>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-green-600 w-16 flex-shrink-0">若通過 →</span>
-          <select value={conds[1]?.nextTaskId || ''} className={sel}
-            onChange={e => {
-              const updated = [...conds];
-              updated[1] = { ...updated[1], nextTaskId: e.target.value };
-              onUpdate({ ...task, conditions: updated });
-            }}>
-            <option value="">選擇繼續目標</option>{renderOpts()}
-          </select>
-        </div>
+        <p className="text-xs text-gray-400 mt-1 pl-1">
+          ℹ 迴圈返回只指回前方任務；若需同時有「繼續前進」的條件分支，請改用「條件分支」排他閘道（需 `_g` 後綴）。
+        </p>
       </div>
     );
   }
