@@ -396,7 +396,16 @@ export function computeLayout(flow) {
       top:    { x: cx,      y: cy - hy },
     };
 
-    l4Numbers[task.id] = task.type === 'task' ? `${l3Number}-${taskCounter++}` : null;
+    // Use stored l4Number (from Excel import) whenever present so imported
+    // gateways retain their `_g` suffix label; fall back to sequential counter
+    // for manually-created tasks without a stored number.
+    if (task.l4Number) {
+      l4Numbers[task.id] = String(task.l4Number);
+    } else if (task.type === 'task') {
+      l4Numbers[task.id] = `${l3Number}-${taskCounter++}`;
+    } else {
+      l4Numbers[task.id] = null;
+    }
   });
 
   // ── 10. Build connections ──────────────────────────────────────────
@@ -431,7 +440,14 @@ export function computeLayout(flow) {
         if (!nextId || !taskIdSet.has(nextId)) return;
         const toTask = tasks.find(t => t.id === nextId);
         if (!toTask) return;
-        connections.push({ fromId: task.id, toId: toTask.id, label: '', exitSide: 'right', entrySide: 'left', laneBottomY: undefined });
+        // Backward edge (e.g. 迴圈返回): route via top corridor above lanes so
+        // the arrow is clearly visible in the gap between title bar and tasks,
+        // instead of hiding inside the title bar area.
+        const toPos = positions[toTask.id];
+        const isBackward = toPos && (toPos.col < fromPos.col || (toPos.col === fromPos.col && toPos.row < fromPos.row));
+        const exitSide  = isBackward ? 'top' : 'right';
+        const entrySide = isBackward ? 'top' : 'left';
+        connections.push({ fromId: task.id, toId: toTask.id, label: '', exitSide, entrySide, laneBottomY: undefined });
       });
     }
   });

@@ -11,6 +11,16 @@ import { useState } from 'react';
 const CHANGELOG = [
   {
     date: '2026-04-21',
+    title: '流程圖修正：閘道顯示 _g 編號 + 迴圈返回連線可見',
+    items: [
+      '**閘道現在會顯示 L4 編號（含 `_g` 尾碼）**：原本 `layout.l4Numbers` 只對 task 指派，閘道被跳過；改為優先用 `task.l4Number`，手動建立的 task 才 fallback 到 counter',
+      '**一般任務的 backward 連線（迴圈返回）改走上方 corridor**：原本走 title-bar 上方 y=32 會被藍色 title 蓋住視覺隱形；現在改 top→top 走 title bar 與任務之間的空隙，清楚可見',
+      '`迴圈返回至` regex 放寬：接受「至」「：」「:」或直接空格，容忍全/半形空格',
+      '舊行為：start/end 事件原本不顯示 L4 編號，現在也會顯示（stored value）',
+    ],
+  },
+  {
+    date: '2026-04-21',
     title: '迴圈返回：不再視為閘道，只是帶 back-edge 的一般任務',
     items: [
       '重新定義「迴圈返回」語意：**不是獨立閘道元件**，而是一般任務 + 往前任務的連線',

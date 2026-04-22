@@ -79,8 +79,10 @@ function parseFlowAnnotations(flowText) {
   const condMergeM = text.match(/條件合併來自多個分支[^，,\n]*[，,]\s*序列流向\s*([\d.-]+(?:_g\d*)?)/);
   if (condMergeM) condMergeNextNums = [condMergeM[1].trim()];
 
-  // ── 迴圈返回至 X (new simple syntax) ───────────────────────────
-  const loopBackNumbers = [...text.matchAll(/迴圈返回至\s*([\d.-]+(?:_g\d*)?)/g)]
+  // ── 迴圈返回至 X / 迴圈返回：X / 迴圈返回 X (new simple syntax, tolerant) ──
+  // Accepts 至/：/: plus half/full-width space between keyword and number.
+  // Legacy "迴圈返回：若未通過..." won't match here because Chinese chars aren't \d.
+  const loopBackNumbers = [...text.matchAll(/迴圈返回(?:至|：|:)?[\s　]*([\d.-]+(?:_g\d*)?)/g)]
     .map(m => m[1].trim())
     .filter((v, i, a) => a.indexOf(v) === i);
 
