@@ -11,6 +11,13 @@ import { useState } from 'react';
 const CHANGELOG = [
   {
     date: '2026-04-22',
+claude/infer-entry-corridor-backward
+    title: 'Loop-back 從 backward-up 優先走下方 corridor',
+    items: [
+      '修正 `5-3-1-3_g1 → 5-3-1-2` 類型的 loop-back 原本走上方 corridor 繞到最高再下來，且進入點用 right 會撞到 target 已佔用的端點',
+      '改法 1：`getExitPriority` 對 `(dr<0, dc<0)` backward-up 情境優先 bottom（讓 path 在 source 附近就近繞回，不用爬到頂部）',
+      '改法 2：`inferEntrySide` 將「backward + vertical exit」一般化為 `entry = exitSide`（走 corridor 後從同側進入目標），避開 target 的 horizontal ports',
+=
     title: 'Hover 高亮：方向色分流 + 連線反向高亮端點',
     items: [
       '**連線方向感知配色**：hover 元件時，**Outgoing（此元件指出去）**用 primary 深藍 `#2A5598`；**Incoming（指進此元件）**用 light 淡藍 `#7AB5DD`；方向一眼看清',
@@ -18,6 +25,7 @@ const CHANGELOG = [
       '連線 hit area 擴大：額外加一條 transparent 10px 寬的 stroke 包住實線，讓滑鼠不用完全壓在細線上也能 hover 到',
       '新增 `ah-hover-out` / `ah-hover-in` 兩個 SVG marker，箭頭尖端跟線段同色',
       '`ui-rules.md` 新增「連線 hover 色」段落，兩色納入標準色票',
+>>> main
     ],
   },
   {
