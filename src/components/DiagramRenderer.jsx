@@ -19,10 +19,27 @@ const HOVER_IN_STROKE  = '#7AB5DD'; // light blue        — what FEEDS INTO thi
 
 function wrapText(text, maxChars) {
   if (!text) return [];
+  // Tokenize: each CJK char / CJK-punct is its own token, each run of
+  // Latin/digit chars is one token, other single non-space chars are one
+  // token. Whitespace acts as separator only. This keeps English words
+  // intact on line breaks instead of slicing "Sourcer" → "Sourc"+"er".
+  const cjkRe = /[　-〿぀-ゟ゠-ヿ一-鿿＀-￯]/;
+  const tokens = text.match(/[　-〿぀-ゟ゠-ヿ一-鿿＀-￯]|[A-Za-z0-9]+|\S/g) || [];
+  // CJK occupies ~2x the horizontal space of a Latin char; treat maxChars
+  // as a CJK-equivalent budget (maxWidth = maxChars * 2 Latin units).
+  const tokWidth = t => [...t].reduce((s, c) => s + (cjkRe.test(c) ? 2 : 1), 0);
+  const isLatin = c => /[A-Za-z0-9]/.test(c);
+  const maxWidth = maxChars * 2;
   const lines = [];
-  for (let i = 0; i < text.length; i += maxChars) {
-    lines.push(text.slice(i, i + maxChars));
+  let cur = '', curW = 0;
+  for (const tok of tokens) {
+    const needsSpace = cur && isLatin(cur[cur.length - 1]) && isLatin(tok[0]);
+    const addW = tokWidth(tok) + (needsSpace ? 1 : 0);
+    if (!cur) { cur = tok; curW = tokWidth(tok); }
+    else if (curW + addW <= maxWidth) { cur += (needsSpace ? ' ' : '') + tok; curW += addW; }
+    else { lines.push(cur); cur = tok; curW = tokWidth(tok); }
   }
+  if (cur) lines.push(cur);
   return lines;
 }
 

@@ -20,6 +20,8 @@ const CHANGELOG = [
       'Excel 匯出：`generateFlowAnnotation` 產出新格式；FlowTable 任務關聯說明欄同步改顯示新文字',
       'Excel 匯入：regex 放寬到同時接受新格式「迴圈返回，序列流向 X」與舊格式（`至 X` / `：X` / 空格 X），向後相容',
       'HelpPanel 範例、說明文字同步更新',
+      '**流程圖文字換行改 token-aware**：原本按字元數切會把 `Sourcer` 切成 `Sourc` + `er`、`Purchasing Supervisor` 切成 `Purch` / `asing` / `Supe` / `rvisor`，現在英文單字、數字串視為不可分 token，CJK 字仍可逐字換行（使用者：「似乎會自動在單字的中間換行」）',
+      '新的寬度計算視 CJK 為 2 倍寬、Latin 為 1 倍寬，maxChars 解讀為 CJK 等效寬度，泳道標題、任務名、事件名、描述欄位共用此邏輯',
     ],
   },
   {
