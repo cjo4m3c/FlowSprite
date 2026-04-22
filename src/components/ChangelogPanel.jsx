@@ -11,6 +11,17 @@ import { useState } from 'react';
 const CHANGELOG = [
   {
     date: '2026-04-21',
+    title: '子流程用 L3 活動元件 + 修正 same-row 平行 corridor 直線 bug',
+    items: [
+      '**子流程調用**：解析 Excel「調用子流程 5-3-2」取出 L3 編號，任務 `type` 設為 `l3activity`，繪成雙邊書擋矩形，上面顯示 `[子流程] 5-3-2`',
+      'Wizard UI 的「子流程名稱」欄改為「子流程 L3 編號」（範例 `5-3-2`）',
+      '**修正 routeArrow 直線 bug**：同列的 bottom→bottom（或同欄 top→top 等）連線原本會因為 `sy === ty` 被「degenerate-alignment shortcut」誤判為直線，穿過中間所有元件',
+      '新行為：先檢查 exitSide === entrySide（parallel corridor）**再**處理 degenerate alignment，所以平行 corridor 一定走正確的 3-段繞行路徑',
+      'Draw.io 匯出版本本來就正確（用 draw.io 自己的 orthogonalEdgeStyle），只有網頁 SVG 受影響',
+    ],
+  },
+  {
+    date: '2026-04-21',
     title: '閘道出口避開自身 incoming 端點',
     items: [
       '新增 incoming-port 感知：閘道選 outgoing 出口時，自動避開這個閘道**自身已被 incoming 佔用**的端點',

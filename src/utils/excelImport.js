@@ -79,6 +79,12 @@ function parseFlowAnnotations(flowText) {
   const condMergeM = text.match(/條件合併來自多個分支[^，,\n]*[，,]\s*序列流向\s*([\d.-]+(?:_g\d*)?)/);
   if (condMergeM) condMergeNextNums = [condMergeM[1].trim()];
 
+  // ── 調用子流程 5-3-2 / 調用子流程 5-3-2，返回後序列流向 5-3-1-5 ──
+  // Extracts the called L3 number (three-segment, e.g. "5-3-2"). The return
+  // target "返回後序列流向 X" is already captured via nextTaskNumbers above.
+  const subprocessM = text.match(/調用子流程\s*(\d+-\d+-\d+)/);
+  const subprocessL3 = subprocessM ? subprocessM[1] : '';
+
   // ── 迴圈返回至 X / 迴圈返回：X / 迴圈返回 X (new simple syntax, tolerant) ──
   // Accepts 至/：/: plus half/full-width space between keyword and number.
   // Legacy "迴圈返回：若未通過..." won't match here because Chinese chars aren't \d.
@@ -105,6 +111,7 @@ function parseFlowAnnotations(flowText) {
     condMergeNextNums,  // XOR/OR join: outgoing target
     loopBackNumbers,    // back-edge targets (new simple syntax, non-gateway)
     loopConditions,     // legacy loop annotation targets (non-gateway, both back + forward)
+    subprocessL3,       // called L3 activity number (e.g. "5-3-2"), empty if not a subprocess
   };
 }
 
@@ -161,11 +168,14 @@ function buildFlow(rows) {
     const isStartEvent = /開始事件/.test(l4Name);
     const isEndEvent   = /結束事件/.test(l4Name);
 
+    const isSubprocess = Boolean(ann.subprocessL3);
+
     let taskType;
-    if (isStartEvent)      taskType = 'start';
-    else if (isEndEvent)   taskType = 'end';
-    else if (isGateway)    taskType = 'gateway';
-    else                   taskType = 'task';
+    if (isStartEvent)       taskType = 'start';
+    else if (isEndEvent)    taskType = 'end';
+    else if (isGateway)     taskType = 'gateway';
+    else if (isSubprocess)  taskType = 'l3activity';  // 調用子流程 → render as bookend rectangle
+    else                    taskType = 'task';
 
     const task = {
       id: generateId(),
@@ -177,6 +187,7 @@ function buildFlow(rows) {
         : { nextTaskIds: [] }),
       ...(taskType === 'start' ? { connectionType: 'start' } : {}),
       ...(taskType === 'end'   ? { connectionType: 'end'   } : {}),
+      ...(isSubprocess ? { connectionType: 'subprocess', subprocessName: ann.subprocessL3 } : {}),
       l4Number:       l4Num,
       description:    String(row[4] ?? '').trim(),
       inputItems:     String(row[5] ?? '').trim(),

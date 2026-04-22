@@ -153,7 +153,7 @@ export function applyConnectionType(task, newCT) {
   // loop-return is NOT a gateway — it's a regular task with a back-edge
   // stored in nextTaskIds[0] (single target, like 迴圈返回至 X syntax).
   const typeMap = {
-    sequence: st, subprocess: 'task', start: 'start', end: 'end', breakpoint: 'end',
+    sequence: st, subprocess: 'l3activity', start: 'start', end: 'end', breakpoint: 'end',
     'conditional-branch': 'gateway', 'parallel-branch': 'gateway',
     'parallel-merge': 'gateway', 'conditional-merge': 'gateway',
     'loop-return': 'task',

@@ -49,8 +49,8 @@ export default function ConnectionSection({ task, allTasks, displayLabels, onUpd
     return (
       <div className="flex flex-col gap-1.5 mt-1.5">
         <div className="flex items-center gap-2">
-          <span className={lbl}>子流程名稱</span>
-          <input className={inp} value={task.subprocessName || ''} placeholder="例：1.2.3 訂單確認"
+          <span className={lbl}>子流程 L3 編號</span>
+          <input className={inp} value={task.subprocessName || ''} placeholder="例：5-3-2"
             onChange={e => onUpdate({ ...task, subprocessName: e.target.value })} />
         </div>
         <div className="flex items-center gap-2">
@@ -60,6 +60,9 @@ export default function ConnectionSection({ task, allTasks, displayLabels, onUpd
             <option value="">選擇目標任務</option>{renderOpts()}
           </select>
         </div>
+        <p className="text-xs text-gray-400 mt-1 pl-1">
+          ℹ 此任務將以 L3 活動元件（雙邊書擋矩形）繪製，上面顯示所調用的子流程 L3 編號
+        </p>
       </div>
     );
   }
