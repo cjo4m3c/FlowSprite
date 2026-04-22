@@ -181,19 +181,27 @@ const CONNECTIONS = [
  * dr = toRow - fromRow (正 = 下方角色, 負 = 上方角色)
  * dc = toCol - fromCol (正 = 右邊欄位, 負 = 左邊 / 往前)
  *
- * Smart routing picks each閘道 outgoing 端點 from a priority list, and
- * Phase 3 rebalances across gateways so multiple lines don't share the
- * same corridor.
+ * Smart routing picks each閘道 outgoing 端點 from a priority list; the top
+ * and bottom corridors use slot allocation so multiple parallel
+ * connections share the same corridor region at distinct y-levels.
  */
 const ROUTING = [
-  { condition: 'dr=0, dc=1（同列相鄰向右）',        exit: '右 → 左',       note: '主要順向連線，水平 midX 折線' },
-  { condition: 'dr=0, dc>1（同列跳欄向右）',        exit: '上 → 左',       note: '走上方 corridor 跳過中間元件' },
-  { condition: 'dr=0, dc<0（同列往前 / loop-back）', exit: '上 → 上',       note: '上方 corridor 回到前面任務；若衝突改走下方' },
-  { condition: 'dr<0, 任意 dc（目標在上方）',         exit: '上 → 左 / 上',   note: '目標同欄時進對側 top；其他走 L 形' },
-  { condition: 'dr>0, 任意 dc（目標在下方）',         exit: '下 → 左 / 下',   note: '目標同欄時進對側 top；其他走 L 形' },
-  { condition: '同閘道多出口衝突',                   exit: '依優先順序分散',  note: 'Phase 1：每條件挑第一個未被 sibling 佔用的側' },
-  { condition: '跨閘道 corridor 衝突',               exit: '後處理讓步',     note: 'Phase 3：短距離先留，長距離換備選側 / 下方 slot' },
+  { condition: 'dr=0, dc=1（同列相鄰向右）',         exit: '右 → 左',       note: '主要順向連線，水平 midX 折線' },
+  { condition: 'dr=0, dc>1（同列跳欄向右）',         exit: '上 → 上',       note: '走上方 corridor 跳過中間元件；slot 系統分配不同 y-level' },
+  { condition: 'dr=0, dc<0（同列往前 / loop-back）',  exit: '上 → 上',       note: '走上方 corridor 回到前面任務；slot 系統避免與其他 top 連線重疊' },
+  { condition: 'dr<0, dc=0 / 相鄰（目標在上方同欄）', exit: '上 → 對側',      note: '簡單 1-bend 折線' },
+  { condition: 'dr<0, dc>0（上方右側）',              exit: '上 → 左',       note: 'L 形繞上' },
+  { condition: 'dr>0, dc=0 / 相鄰（目標在下方同欄）', exit: '下 → 對側',      note: '簡單 1-bend 折線' },
+  { condition: 'dr>0, dc>0（下方右側）',              exit: '下 → 左',       note: 'L 形繞下' },
+  { condition: '同閘道多出口衝突',                    exit: '依優先順序分散', note: 'Phase 1：每條件挑第一個未被 sibling 佔用的側' },
+  { condition: '目標閘道有多條 incoming',             exit: '入口分散',       note: 'Phase 2：按來源方向把 entry 分到 4 個 port' },
   { condition: '閘道自身 incoming 端點已被佔用',      exit: '避開',           note: 'outgoing 會跳過 incoming 已佔的側，避免共用 port' },
+];
+
+const CORRIDOR = [
+  { corridor: '上方 corridor（top→top）',  usage: '閘道 top-skip、task backward（迴圈返回）、task forward 長跳欄（dc>1 同列）', slot: '自動 slot：每條連線一個 y-level，最長 span 放最外側；row 0 會動態預留空間避免壓到標題列' },
+  { corridor: '下方 corridor（bottom→bottom）', usage: '同列跨欄下方繞行（少數情境）', slot: '自動 slot：在泳道底部往上堆疊，最長 span 放最外側，泳道高度自動擴張' },
+  { corridor: '平行走廊（left→left / right→right）', usage: '較罕見，用於特殊反向或跨區位連線', slot: '目前未做 slot，依 min/max 座標加固定偏移' },
 ];
 
 const EXPORTS = [
@@ -364,12 +372,11 @@ export default function HelpPanel() {
                 <p className="text-xs text-gray-400 mb-2">
                   dr = 目標角色列 − 來源角色列（正 = 下方）　dc = 目標欄 − 來源欄（正 = 右側，往前 = 負）
                 </p>
-                <table className="w-full text-xs">
+                <table className="w-full text-xs mb-4">
                   <thead>
                     <tr className="text-left text-gray-500">
                       <th className="pb-1">條件</th>
-                      <th className="pb-1 w-14 text-center">出口</th>
-                      <th className="pb-1 w-14 text-center">入口</th>
+                      <th className="pb-1 w-28 text-center">出口 → 入口</th>
                       <th className="pb-1">備註</th>
                     </tr>
                   </thead>
@@ -378,8 +385,27 @@ export default function HelpPanel() {
                       <tr key={i} className="border-t border-gray-100">
                         <td className="py-1.5 font-mono text-gray-700">{r.condition}</td>
                         <td className="py-1.5 text-center font-medium text-indigo-600">{r.exit}</td>
-                        <td className="py-1.5 text-center font-medium text-indigo-600">{r.entry}</td>
                         <td className="py-1.5 text-gray-500">{r.note}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                <p className="text-xs text-gray-500 font-medium mb-1">Corridor slot 系統</p>
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="text-left text-gray-500">
+                      <th className="pb-1 w-40">通道</th>
+                      <th className="pb-1">適用情境</th>
+                      <th className="pb-1">Slot 規則</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {CORRIDOR.map((c, i) => (
+                      <tr key={i} className="border-t border-gray-100">
+                        <td className="py-1.5 font-medium text-indigo-600">{c.corridor}</td>
+                        <td className="py-1.5 text-gray-600">{c.usage}</td>
+                        <td className="py-1.5 text-gray-500">{c.slot}</td>
                       </tr>
                     ))}
                   </tbody>

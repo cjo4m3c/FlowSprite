@@ -93,7 +93,7 @@ FlowSprite/
     │   └── ChangelogPanel.jsx     ← 版本更新紀錄 Modal（功能後新增條目）
     ├── diagram/
     │   ├── constants.js           ← LAYOUT 尺寸 + COLORS 主題色
-    │   └── layout.js              ← 核心：DAG 欄位分配 + 連線 smart routing
+    │   └── layout.js              ← 核心：DAG 欄位分配 + 連線 smart routing + top/bottom corridor slot 分配
     └── utils/
         ├── taskDefs.js            ← 編號 regex、connectionType 常數、工廠函式
         ├── storage.js             ← localStorage I/O + 載入時遷移（點→橫線、閘道補 _g）

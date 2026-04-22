@@ -11,6 +11,18 @@ import { useState } from 'react';
 const CHANGELOG = [
   {
     date: '2026-04-22',
+    title: '文件同步 + 新增 3 個 AI skill',
+    items: [
+      '`HelpPanel` 規則對齊最新 routing：ROUTING 表格合併出入口欄、補「Corridor slot 系統」小節說明 top / bottom 通道規則',
+      '`HANDOVER.md` 更新：`layout.js` 行數 ~500 → ~800；風險章節補 Phase 3b / 3c / corridor slot 相關說明；Backlog 更新',
+      '`README.md` 補 `layout.js` corridor slot 說明',
+      '新增 `.claude/skills/sync-main.md`：使用者合併 PR 後本地同步的通用流程',
+      '新增 `.claude/skills/doc-audit.md`：四份文件對齊性檢查清單',
+      '新增 `.claude/skills/trace-layout.md`：跑 node trace 腳本驗證 `computeLayout` 輸出的樣板',
+    ],
+  },
+  {
+    date: '2026-04-22',
     title: '上方 corridor slot 化 + forward 長跳欄避開中間元件',
     items: [
       '**Phase 3c**：task → task 的 forward 連線若同列 `dc>1`（跳欄），改走 **top corridor**，避免直線穿過中間 task',
