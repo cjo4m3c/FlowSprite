@@ -11,6 +11,16 @@ import { useState } from 'react';
 const CHANGELOG = [
   {
     date: '2026-04-21',
+    title: 'L4 編號規則一致化：編輯工具 / 流程圖顯示同步',
+    items: [
+      '**使用者規則**：開始事件 `-0`、結束事件 `-99`、閘道 `${前置任務}_g`（連續多個 `_g2`、`_g3`…）、中間任務從 1 開始只對**一般任務**順編（閘道不佔號）',
+      '修正前：Wizard / FlowEditor 的 `computeDisplayLabels` 是純 counter，把 start / end / gateway 都算進順編（顯示 1、2、3…），跟流程圖上的編號不一致',
+      '修正後：`computeDisplayLabels` 按規則補尾碼，**僅一般任務遞增 counter**；stored `task.l4Number` 優先，legacy 閘道無 `_g` 也會在顯示時補上',
+      '`layout.l4Numbers` 改直接呼叫 `computeDisplayLabels`，編輯工具下拉選單跟流程圖 100% 顯示一致的編號',
+    ],
+  },
+  {
+    date: '2026-04-21',
     title: '開始 / 結束事件 label 長文字自動換行',
     items: [
       '原本 `EventLabel` 把 name 與 description 各畫成一個 `<text>`，長字串會溢出泳道欄位邊界',

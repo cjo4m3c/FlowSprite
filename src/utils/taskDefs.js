@@ -198,12 +198,73 @@ export function applySequentialDefaults(tasks) {
 }
 
 // ── Display helpers ───────────────────────────────────────────────
-/** Compute display labels (e.g. "1-1-1-1") for each task */
+/**
+ * Compute L4 display labels following the project numbering rule:
+ *   - Stored `task.l4Number` wins (imported flows keep their values;
+ *     gateway without `_g` gets a display fallback `_g` appended).
+ *   - Otherwise:
+ *       start event         → `${l3}-0`
+ *       end event / breakpoint → `${l3}-99`
+ *       gateway (any kind)   → `${lastTask}_g` (or _g2, _g3… when
+ *                              consecutive gateways follow the same
+ *                              base task)
+ *       regular task         → `${l3}-${counter}` where counter counts
+ *                              ONLY regular tasks from 1.
+ *
+ * This is used by both the editor dropdowns (`taskOptionLabel`) and the
+ * diagram (`layout.l4Numbers`), so both views show identical labels.
+ */
 export function computeDisplayLabels(tasks, l3Number) {
   const labels = {};
-  let counter = 1;
+  const prefix = l3Number || '?';
+  const GATEWAY_CTS = new Set([
+    'conditional-branch', 'parallel-branch',
+    'parallel-merge', 'conditional-merge',
+  ]);
+
+  let taskCounter = 1;
+  let lastTaskBase = null;  // last regular task's L4 number (base for _g)
+  let gwConsec = 0;         // consecutive gateways after lastTaskBase
+
   tasks.forEach(task => {
-    labels[task.id] = `${l3Number || '?'}-${counter++}`;
+    const ct = task.connectionType || 'sequence';
+    const isStart = task.type === 'start' || ct === 'start';
+    const isEnd   = task.type === 'end'   || ct === 'end' || ct === 'breakpoint';
+    const isGateway = task.type === 'gateway' || GATEWAY_CTS.has(ct);
+
+    // 1. Respect stored l4Number (imported flows)
+    if (task.l4Number) {
+      let label = String(task.l4Number);
+      if (isGateway && !/_g\d*$/.test(label)) label += '_g';
+      labels[task.id] = label;
+      // Update rolling state so subsequent generated labels continue
+      // sensibly after imported rows.
+      const mGW = label.match(/^(\d+-\d+-\d+-\d+)_g(\d*)$/);
+      if (mGW) {
+        lastTaskBase = mGW[1];
+        gwConsec = mGW[2] === '' ? 1 : parseInt(mGW[2], 10);
+      } else if (!isStart && !isEnd) {
+        lastTaskBase = label.replace(/_g\d*$/, '');
+        gwConsec = 0;
+      }
+      return;
+    }
+
+    // 2. Generated labels by type
+    if (isStart) {
+      labels[task.id] = `${prefix}-0`;
+    } else if (isEnd) {
+      labels[task.id] = `${prefix}-99`;
+    } else if (isGateway) {
+      const base = lastTaskBase || `${prefix}-${taskCounter}`;
+      gwConsec += 1;
+      labels[task.id] = gwConsec === 1 ? `${base}_g` : `${base}_g${gwConsec}`;
+    } else {
+      const num = `${prefix}-${taskCounter++}`;
+      labels[task.id] = num;
+      lastTaskBase = num;
+      gwConsec = 0;
+    }
   });
   return labels;
 }
