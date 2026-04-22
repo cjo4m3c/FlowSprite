@@ -11,6 +11,15 @@ import { useState } from 'react';
 const CHANGELOG = [
   {
     date: '2026-04-22',
+    title: 'Loop-back 從 backward-up 優先走下方 corridor',
+    items: [
+      '修正 `5-3-1-3_g1 → 5-3-1-2` 類型的 loop-back 原本走上方 corridor 繞到最高再下來，且進入點用 right 會撞到 target 已佔用的端點',
+      '改法 1：`getExitPriority` 對 `(dr<0, dc<0)` backward-up 情境優先 bottom（讓 path 在 source 附近就近繞回，不用爬到頂部）',
+      '改法 2：`inferEntrySide` 將「backward + vertical exit」一般化為 `entry = exitSide`（走 corridor 後從同側進入目標），避開 target 的 horizontal ports',
+    ],
+  },
+  {
+    date: '2026-04-22',
     title: 'Hover 時同步高亮相關連線',
     items: [
       '滑過任何元件（task / gateway / start / end / L3 活動）時，除了元件本身變藍，**指向它的 incoming 連線**與**它指出去的 outgoing 連線**也一起改為藍色加粗',
