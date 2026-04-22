@@ -10,7 +10,21 @@ import { useState } from 'react';
 
 const CHANGELOG = [
   {
-    date: '2026-04-23',
+    date: '2026-04-22',
+    title: '閘道多條件端點分散 + corridor 優先端點不混用 + 同 target 巢狀 slot + 泳道色塊補滿',
+    items: [
+      '**閘道 4 個以上條件的 fan-out 重疊**（使用者：「指向 5-1-2-7 和 5-1-2-10 的連線幾乎完全重疊」）：原因是 `getExitPriority` 對多數方向只回傳 3 個優先端點（top/right/bottom），第 4 條件 fallback 回第一個（重複佔用 top），從閘道發出的兩條線疊在同一個 port',
+      '修正：`getExitPriority` 追加所有未列出的側邊為末尾 fallback，確保 4 條件下可分到 4 個不同 port；5 條以上仍會重複（需 port 子位置偏移架構，列 backlog）',
+      '**Phase 3b / 3c bottom fallback 缺少混用檢查**：top corridor 衝突時回退到 bottom，卻沒檢查 bottom 是否已有反向端點在用。典型案例：t8 從閘道入 bottom，再 Phase 3c 把 t8 → end 排到 bottom OUT → 同 port 一進一出（違反使用者第一優先規則）',
+      '修正：bottom 回退前先檢查 `hasIn(source, bottom) || hasOut(target, bottom)`；若會混用則寧可使用 top（視覺交叉屬規則 2、端點混用屬規則 1，規則 1 優先）',
+      '**Top / bottom corridor 同 target 的 slot 順序**：原本 tiebreaker 用 source col 升冪，導致 range [2,6] 排在內側、contained 的 [4,6] 排外側（橫線交叉）。改以 span 升冪為 tiebreaker：窄的在內、寬的在外，巢狀 range 不再交叉',
+      'Trace 驗證使用者情境：4 條件分別走 top/right/bottom/left，t7/t8/t9 → end 都走 top corridor 且無混用，t10 → end 用 default 直達',
+      '**泳道左側角色欄出現白色缺口**：當一個 lane 需要預留多個 top corridor slot（例如一角色做多件事、連線被抬高）時，step 7 把 corridor 空間加在 lane 之上，但 header / body rect 只覆蓋 `laneTopY ~ laneTopY + laneH`，corridor 那段就變成白條',
+      '修正：DiagramRenderer 畫 header / body 時改從「上一 lane 底部」（或 `TITLE_H`）開始，吃掉 corridor 預留空間。概念上 corridor 屬於下方那個 lane 的進入走廊，顏色跟該 lane 一致合理',
+    ],
+  },
+  {
+    date: '2026-04-22',
     title: 'Phase 3d 端點混用判斷修正 + 文件同步',
     items: [
       '**Phase 3d 端點混用檢查方向錯誤**：原本寫「port 已有同方向」而非「已有相反方向」，導致 t9 → end 在 end 的 bottom 已被 t7 / t8 用作 IN 時會被誤擋（還是走預設 right→left 穿過中間任務）',
@@ -21,7 +35,7 @@ const CHANGELOG = [
     ],
   },
   {
-    date: '2026-04-23',
+    date: '2026-04-22',
     title: '流程圖編號規則：只顯示 L3 / L4；迴圈返回改新標準文字',
     items: [
       '**流程圖上的編號顯示規則重新釐清**：只有 L3 活動與 L4 任務的「正式編號」才會印在形狀上；開始（尾碼 `-0`）、結束（`-99`）、閘道（`_g` / `_g1`…）的編號僅作辨識用，不顯示在流程圖上',

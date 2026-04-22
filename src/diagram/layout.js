@@ -29,9 +29,22 @@ function halfExtent(type, axis) {
  * returns the ordered list of preferred exit sides. The greedy assigner below
  * walks this list picking the first side not yet used by another condition.
  *
+ * The base list per direction keeps the visually best 2–3 sides in order.
+ * Any still-unlisted side is appended as a last-resort fallback so a gateway
+ * with ≥4 conditions can still distribute onto 4 distinct ports (priority 1
+ * rule: "同一端點不能同時有一進一出"; corollary: same exit side reused
+ * between sibling conditions causes overlapping lines at the source).
+ *
  * Legacy `getGatewayExitEntry` preserved as fallback for edge cases & tests.
  */
 function getExitPriority(dr, dc) {
+  const base = _exitPriorityBase(dr, dc);
+  const ALL_SIDES = ['top', 'right', 'bottom', 'left'];
+  const extras = ALL_SIDES.filter(s => !base.includes(s));
+  return [...base, ...extras];
+}
+
+function _exitPriorityBase(dr, dc) {
   if (dr === 0) {
     if (dc === 1)  return ['right',  'bottom', 'top'];   // forward adjacent
     if (dc > 1)    return ['top',    'bottom', 'right']; // forward skip (corridor above)
@@ -539,14 +552,15 @@ export function computeLayout(flow) {
       const row = Math.min(fr, tr);
       const minCol = Math.min(fc, tc);
       const maxCol = Math.max(fc, tc);
-      // Fall back to bottom corridor when EITHER:
-      //   (a) top corridor cross-conflict (this edge's vertical would cross
-      //       an earlier horizontal corridor — `isColInsideTopRange`), or
-      //   (b) mixed-port conflict — the top port on source is already used
-      //       as incoming, or target's top is already used as outgoing.
-      const topWouldMix = hasIn(task.id, 'top') || hasOut(toId, 'top');
-      const topCrosses = isColInsideTopRange(row, fc) || isColInsideTopRange(row, tc);
-      if (topCrosses || topWouldMix) {
+      // Priority: rule 1 (no port-mix) > rule 2 (no visual crossing).
+      //   top clean → top; top bad but bottom mix-free → bottom;
+      //   both bad → top (crossing is visual-only; mix violates stricter rule 1).
+      const topMix    = hasIn(task.id, 'top')    || hasOut(toId, 'top');
+      const bottomMix = hasIn(task.id, 'bottom') || hasOut(toId, 'bottom');
+      const topCross  = isColInsideTopRange(row, fc) || isColInsideTopRange(row, tc);
+      const topBad    = topMix || topCross;
+      const useBottom = topBad && !bottomMix;
+      if (useBottom) {
         taskBackwardRouting.set(`${task.id}::${toId}`, { exitSide: 'bottom', entrySide: 'bottom' });
         useOut(task.id, 'bottom'); useIn(toId, 'bottom');
       } else {
@@ -588,12 +602,17 @@ export function computeLayout(flow) {
       const row = fr;
       const minCol = Math.min(fc, tc);
       const maxCol = Math.max(fc, tc);
-      // Top corridor fallback conditions (same as Phase 3b):
-      //   (a) col-range cross-conflict, OR
-      //   (b) mixed-port — top on source has incoming / top on target has outgoing
-      const topWouldMix = hasIn(task.id, 'top') || hasOut(toId, 'top');
-      const topCrosses = isColInsideTopRange(row, fc) || isColInsideTopRange(row, tc);
-      if (topCrosses || topWouldMix) {
+      // Priority: rule 1 (no port-mix) > rule 2 (no visual crossing).
+      //   top clean                → top
+      //   top has issue, bottom mix-free → bottom
+      //   both have issue          → top (crossing is visual-only; bottom mix
+      //                              violates stricter rule 1)
+      const topMix    = hasIn(task.id, 'top')    || hasOut(toId, 'top');
+      const bottomMix = hasIn(task.id, 'bottom') || hasOut(toId, 'bottom');
+      const topCross  = isColInsideTopRange(row, fc) || isColInsideTopRange(row, tc);
+      const topBad    = topMix || topCross;
+      const useBottom = topBad && !bottomMix;
+      if (useBottom) {
         taskForwardRouting.set(`${task.id}::${toId}`, { exitSide: 'bottom', entrySide: 'bottom' });
         useOut(task.id, 'bottom'); useIn(toId, 'bottom');
       } else {
@@ -736,9 +755,17 @@ export function computeLayout(flow) {
   // Bottom corridor: slotIdx 0 sits at lane bottom (FURTHEST from tasks,
   //   i.e. outermost). So smaller target col → largest slotIdx → inner.
   //   Reverse sort.
-  const slotSortAsc = (a, b) =>
-    (taskColOf[a.toId] - taskColOf[b.toId]) ||
-    (taskColOf[a.fromId] - taskColOf[b.fromId]);
+  //
+  // Tiebreaker: when targets match, shorter span goes to inner slot so
+  // nested ranges don't draw crossing horizontals (wider corridor
+  // surrounds the narrower one).
+  const slotSortAsc = (a, b) => {
+    const tDiff = taskColOf[a.toId] - taskColOf[b.toId];
+    if (tDiff !== 0) return tDiff;
+    const spanA = Math.abs(taskColOf[a.toId] - taskColOf[a.fromId]);
+    const spanB = Math.abs(taskColOf[b.toId] - taskColOf[b.fromId]);
+    return spanA - spanB;
+  };
   const slotSortDesc = (a, b) => -slotSortAsc(a, b);
   bottomConnsByRow.forEach(arr => arr.sort(slotSortDesc));
 

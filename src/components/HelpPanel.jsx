@@ -193,10 +193,11 @@ const ROUTING = [
   { condition: 'dr<0, dc>0（上方右側）',              exit: '右 → 左',       note: 'L 形繞上' },
   { condition: 'dr>0, dc=0 / 相鄰（目標在下方同欄）', exit: '下 → 對側',      note: '簡單 1-bend 折線' },
   { condition: 'dr>0, dc>0（下方右側）',              exit: '右 → 左',       note: 'L 形繞下' },
-  { condition: '同閘道多出口衝突',                    exit: '依優先順序分散', note: 'Phase 1：每條件挑第一個未被 sibling 佔用的側' },
+  { condition: '同閘道多出口衝突',                    exit: '依優先順序分散', note: 'Phase 1：每條件挑第一個未被 sibling 佔用的側；4 條件以上會補上未列側邊避免同 port 重疊' },
   { condition: '目標閘道有多條 incoming',             exit: '入口分散',       note: 'Phase 2：按來源方向把 entry 分到 4 個 port' },
   { condition: '閘道自身 incoming 端點已被佔用',      exit: '避開',           note: 'outgoing 會跳過 incoming 已佔的側，避免共用 port' },
   { condition: '跨列 forward 預設路徑會穿過任務矩形', exit: '改端點避障',     note: 'Phase 3d：優先改 target 上/下端點（垂直段放 target 欄）；失敗改 source 上/下端點（垂直段放 source 欄）' },
+  { condition: 'Top / bottom corridor 回退衝突',       exit: '擇優先 rule 1', note: 'Top 交叉時退到 bottom 前先檢查是否會混用；若 top 和 bottom 都有問題，優先 top（視覺交叉屬規則 2、端點混用屬規則 1）' },
 ];
 
 const CORRIDOR = [
