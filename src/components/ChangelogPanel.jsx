@@ -10,7 +10,19 @@ import { useState } from 'react';
 
 const CHANGELOG = [
   {
-    date: '2026-04-21',
+    date: '2026-04-22',
+    title: '規則說明同步 + 更新紀錄日期校正',
+    items: [
+      '`HelpPanel` 規則說明依最新規則改寫：新增「編號規則」章節（開始 `-0` / 結束 `-99` / 閘道 `_g` / 任務流水號）',
+      'ELEMENTS 更新：`L3 活動（子流程調用）` 明確說明用於 `調用子流程 X-Y-Z`，圖上顯示 `[子流程] + L3 編號`',
+      'CONNECTIONS 更新：「迴圈返回」改為單一目標（不是閘道）、「子流程調用」改為繪成 L3 活動元件',
+      'VALIDATION 新增 4 條新規則（迴圈目標必填、閘道 `_g` 尾碼、閘道前綴對應 L4 任務）',
+      'ROUTING 更新：描述 smart routing 多階段（Phase 1 sibling 分配、Phase 3 corridor 衝突讓步、incoming 端點避開）',
+      '修正更新紀錄日期錯誤：本 session（4/22）所有條目原本標注為 4/21，批次改成 4/22',
+    ],
+  },
+  {
+    date: '2026-04-22',
     title: '子流程用 L3 活動元件 + 修正 same-row 平行 corridor 直線 bug',
     items: [
       '**子流程調用**：解析 Excel「調用子流程 5-3-2」取出 L3 編號，任務 `type` 設為 `l3activity`，繪成雙邊書擋矩形，上面顯示 `[子流程] 5-3-2`',
@@ -21,7 +33,7 @@ const CHANGELOG = [
     ],
   },
   {
-    date: '2026-04-21',
+    date: '2026-04-22',
     title: '閘道出口避開自身 incoming 端點',
     items: [
       '新增 incoming-port 感知：閘道選 outgoing 出口時，自動避開這個閘道**自身已被 incoming 佔用**的端點',
@@ -31,7 +43,7 @@ const CHANGELOG = [
     ],
   },
   {
-    date: '2026-04-21',
+    date: '2026-04-22',
     title: 'L4 編號規則一致化：編輯工具 / 流程圖顯示同步',
     items: [
       '**使用者規則**：開始事件 `-0`、結束事件 `-99`、閘道 `${前置任務}_g`（連續多個 `_g2`、`_g3`…）、中間任務從 1 開始只對**一般任務**順編（閘道不佔號）',
@@ -41,7 +53,7 @@ const CHANGELOG = [
     ],
   },
   {
-    date: '2026-04-21',
+    date: '2026-04-22',
     title: '開始 / 結束事件 label 長文字自動換行',
     items: [
       '原本 `EventLabel` 把 name 與 description 各畫成一個 `<text>`，長字串會溢出泳道欄位邊界',
@@ -50,7 +62,7 @@ const CHANGELOG = [
     ],
   },
   {
-    date: '2026-04-21',
+    date: '2026-04-22',
     title: '迴圈返回 UI 對齊新規則：單一目標欄位',
     items: [
       'Wizard / FlowEditor 的「迴圈返回」連線類型原本用「若未通過 / 若通過」兩個條件欄位（舊的閘道式模型）',
@@ -63,7 +75,7 @@ const CHANGELOG = [
     ],
   },
   {
-    date: '2026-04-21',
+    date: '2026-04-22',
     title: 'Phase 3b：task backward 也避開 top corridor 衝突',
     items: [
       '原本 Phase 3 corridor 衝突偵測只管閘道（gateway→X），不看 task→task 的 backward 連線',
@@ -74,7 +86,7 @@ const CHANGELOG = [
     ],
   },
   {
-    date: '2026-04-21',
+    date: '2026-04-22',
     title: 'README 聚焦：本地建置流程 + 專案架構',
     items: [
       '重寫 `README.md`：只保留「本地建置流程（環境需求、套件、安裝步驟）」與「專案架構說明」兩大區塊',
@@ -84,7 +96,7 @@ const CHANGELOG = [
     ],
   },
   {
-    date: '2026-04-21',
+    date: '2026-04-22',
     title: '文件：新增 README.md + HANDOVER.md',
     items: [
       'Repo 根目錄新增 `README.md`：專案簡介、快速開始、部署、編號規則摘要',
@@ -93,7 +105,7 @@ const CHANGELOG = [
     ],
   },
   {
-    date: '2026-04-21',
+    date: '2026-04-22',
     title: '閘道編號強制 `_g`：舊資料自動遷移 + 匯入鏈警告',
     items: [
       '**storage 載入遷移**：舊 localStorage 若有 `type=gateway` 但 L4 編號缺 `_g`（例：`1-1-1-3`），載入時自動改成 `${前置任務編號}_g`（連續多個依序 `_g2`、`_g3`…）',
@@ -104,7 +116,7 @@ const CHANGELOG = [
     ],
   },
   {
-    date: '2026-04-21',
+    date: '2026-04-22',
     title: '合併點不再視為閘道：只有 fork 關鍵字要 `_g`',
     items: [
       '修正 validator 誤把「條件合併來自多個分支」「並行合併來自」的任務當閘道而要求 `_g` 尾碼',
@@ -115,7 +127,7 @@ const CHANGELOG = [
     ],
   },
   {
-    date: '2026-04-21',
+    date: '2026-04-22',
     title: '流程圖 Phase 3：跨閘道 corridor 衝突偵測 + 首頁清理',
     items: [
       '**新增 Phase 3 corridor 衝突偵測**：當兩個不同閘道的條件都想走同一條上方通道且欄位範圍重疊時，後處理的那條自動切到下一順位出口（例如原本走 top corridor → 切到 bottom corridor）',
@@ -125,7 +137,7 @@ const CHANGELOG = [
     ],
   },
   {
-    date: '2026-04-21',
+    date: '2026-04-22',
     title: '流程圖修正：閘道顯示 _g 編號 + 迴圈返回連線可見',
     items: [
       '**閘道現在會顯示 L4 編號（含 `_g` 尾碼）**：原本 `layout.l4Numbers` 只對 task 指派，閘道被跳過；改為優先用 `task.l4Number`，手動建立的 task 才 fallback 到 counter',
@@ -135,7 +147,7 @@ const CHANGELOG = [
     ],
   },
   {
-    date: '2026-04-21',
+    date: '2026-04-22',
     title: '迴圈返回：不再視為閘道，只是帶 back-edge 的一般任務',
     items: [
       '重新定義「迴圈返回」語意：**不是獨立閘道元件**，而是一般任務 + 往前任務的連線',
@@ -146,7 +158,7 @@ const CHANGELOG = [
     ],
   },
   {
-    date: '2026-04-21',
+    date: '2026-04-22',
     title: '流程圖連線：端點進入點對齊通道方向',
     items: [
       '閘道用 top/bottom 通道到同列目標時，進入點改為 target 的 top / bottom **正中央**（原本一律進 left）',
@@ -156,7 +168,7 @@ const CHANGELOG = [
     ],
   },
   {
-    date: '2026-04-21',
+    date: '2026-04-22',
     title: '流程圖連線：複雜情境智慧端點分配',
     items: [
       '閘道有多個 outgoing 條件時，依每個條件目標的相對位置自動挑選不同出口端點（top / right / bottom / left），避免同側多條線重疊',
@@ -167,7 +179,7 @@ const CHANGELOG = [
     ],
   },
   {
-    date: '2026-04-21',
+    date: '2026-04-22',
     title: '全站視覺改版：藍色主題',
     items: [
       '套用統一藍色設計系統，取代原本的墨綠標題列 + 雜色按鈕',
@@ -183,7 +195,7 @@ const CHANGELOG = [
     ],
   },
   {
-    date: '2026-04-21',
+    date: '2026-04-22',
     title: '程式碼清理 + UX 小修',
     items: [
       '移除未使用的 `js-yaml`、`jszip` 兩個 runtime 依賴，縮小安裝體積',
