@@ -1,4 +1,5 @@
 import { LAYOUT } from './constants.js';
+import { computeDisplayLabels } from '../utils/taskDefs.js';
 
 const { LANE_HEADER_W, COL_W, LANE_H: BASE_LANE_H, TITLE_H, NODE_W, NODE_H, DIAMOND_SIZE, CIRCLE_R } = LAYOUT;
 
@@ -527,10 +528,14 @@ export function computeLayout(flow) {
     });
   });
 
-  // ── 9. Node positions ───────────────────────────────────────────────
+  // ── 9. Node positions + unified L4 labels ──────────────────────────
+  //
+  // Labels come from `computeDisplayLabels` (src/utils/taskDefs.js) so the
+  // diagram and the editor dropdowns stay in sync: start gets `-0`, end
+  // gets `-99`, gateways get `${lastTask}_g` (or `_g2`, `_g3` when
+  // consecutive), regular tasks count from 1.
   const positions = {};
-  const l4Numbers = {};
-  let taskCounter = 1;
+  const l4Numbers = computeDisplayLabels(tasks, l3Number);
 
   tasks.forEach(task => {
     const row = taskRowOf[task.id] ?? 0;
@@ -546,24 +551,6 @@ export function computeLayout(flow) {
       bottom: { x: cx,      y: cy + hy },
       top:    { x: cx,      y: cy - hy },
     };
-
-    // Use stored l4Number (from Excel import) whenever present so imported
-    // gateways retain their `_g` suffix label; fall back to sequential counter
-    // for manually-created tasks without a stored number.
-    //
-    // Safety net: if a gateway's stored number lacks `_g` (e.g. legacy data
-    // that slipped past storage migration, or a Wizard-created gateway),
-    // force append `_g` for display so the diagram consistently shows the
-    // gateway naming rule.
-    if (task.l4Number) {
-      let label = String(task.l4Number);
-      if (task.type === 'gateway' && !/_g\d*$/.test(label)) label += '_g';
-      l4Numbers[task.id] = label;
-    } else if (task.type === 'task') {
-      l4Numbers[task.id] = `${l3Number}-${taskCounter++}`;
-    } else {
-      l4Numbers[task.id] = null;
-    }
   });
 
   // ── 10. Build connections ──────────────────────────────────────────
