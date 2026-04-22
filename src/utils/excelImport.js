@@ -85,10 +85,10 @@ function parseFlowAnnotations(flowText) {
   const subprocessM = text.match(/調用子流程\s*(\d+-\d+-\d+)/);
   const subprocessL3 = subprocessM ? subprocessM[1] : '';
 
-  // ── 迴圈返回至 X / 迴圈返回：X / 迴圈返回 X (new simple syntax, tolerant) ──
-  // Accepts 至/：/: plus half/full-width space between keyword and number.
+  // ── 迴圈返回，序列流向 X (new format) / 迴圈返回至 X / 迴圈返回：X / 迴圈返回 X ──
+  // Accepts "，序列流向", 至, ：, : plus half/full-width space before the number.
   // Legacy "迴圈返回：若未通過..." won't match here because Chinese chars aren't \d.
-  const loopBackNumbers = [...text.matchAll(/迴圈返回(?:至|：|:)?[\s　]*([\d.-]+(?:_g\d*)?)/g)]
+  const loopBackNumbers = [...text.matchAll(/迴圈返回(?:[，,]\s*序列流向|至|：|:)?[\s　]*([\d.-]+(?:_g\d*)?)/g)]
     .map(m => m[1].trim())
     .filter((v, i, a) => a.indexOf(v) === i);
 

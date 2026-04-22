@@ -86,7 +86,7 @@ export function generateFlowAnnotation(task, tasks, l4Map) {
     const backId = task.nextTaskIds?.[0];
     const backNum = backId && taskById[backId] ? l4Map[backId] : '';
     const desc = task.loopDescription?.trim();
-    const base = backNum ? `迴圈返回至 ${backNum}` : '迴圈返回';
+    const base = backNum ? `迴圈返回，序列流向 ${backNum}` : '迴圈返回';
     return desc ? `${base}（${desc}）` : base;
   }
 
