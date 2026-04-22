@@ -11,6 +11,18 @@ import { useState } from 'react';
 const CHANGELOG = [
   {
     date: '2026-04-22',
+    title: '上方 corridor slot 化 + forward 長跳欄避開中間元件',
+    items: [
+      '**Phase 3c**：task → task 的 forward 連線若同列 `dc>1`（跳欄），改走 **top corridor**，避免直線穿過中間 task',
+      '**Top corridor slot 系統**：模仿現有 bottom corridor 的 slot，任何 `top → top` 連線（閘道 top-skip / 任務 backward / 任務 forward-skip）都進 `topConnsByRow`，每條自動分配不同 y-level',
+      'Row 0 上方預留空間：`laneTopY[0]` 根據該列 top corridor 數量動態加高（原本只有 54px 到任務，現在會按需擴張），讓箭頭不會壓到標題列',
+      '處理使用者提報的兩個情境：(1) `5-1-2-7/8/9 → end` 多條連線現在各自一條水平線堆疊；(2) `5-1-2-11 → end` 跳過 `5-1-2-12` 不再被擋住',
+      'Phase 3 / 3b 取消 top corridor 衝突檢查（改由 slot 系統處理），邏輯簡化',
+      '`routeArrow` 新增 `laneTopCorridorY` 參數，跟 `laneBottomY` 對稱',
+    ],
+  },
+  {
+    date: '2026-04-22',
     title: '規則說明同步 + 更新紀錄日期校正',
     items: [
       '`HelpPanel` 規則說明依最新規則改寫：新增「編號規則」章節（開始 `-0` / 結束 `-99` / 閘道 `_g` / 任務流水號）',
