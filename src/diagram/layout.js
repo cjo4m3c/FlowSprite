@@ -396,6 +396,38 @@ export function computeLayout(flow) {
     (Math.abs(a.dr) + Math.abs(a.dc)) - (Math.abs(b.dr) + Math.abs(b.dc))
   );
 
+  // Compute incoming ports per gateway so the outgoing-port selection below
+  // can avoid colliding with a port that already has an arrow landing on it.
+  //   - gateway → gateway: use entrySide from condRouting (Phase 1+2 already
+  //     resolved it)
+  //   - regular task → gateway: default right→left, so entry='left'
+  //     (unless Phase 3b gave a non-default backward routing)
+  //   - start → gateway: same default entry='left'
+  const incomingPortByGateway = new Map();
+  const addIncomingPort = (gatewayId, port) => {
+    if (!incomingPortByGateway.has(gatewayId)) incomingPortByGateway.set(gatewayId, new Set());
+    incomingPortByGateway.get(gatewayId).add(port);
+  };
+  tasks.forEach(task => {
+    if (task.type === 'gateway') {
+      (task.conditions || []).forEach(cond => {
+        const r = condRouting.get(`${task.id}::${cond.id}`);
+        const toTask = tasks.find(t => t.id === cond.nextTaskId);
+        if (r && toTask && toTask.type === 'gateway') addIncomingPort(toTask.id, r.entrySide);
+      });
+    } else if (task.type !== 'end') {
+      // Regular task → gateway uses default right→left (entry='left').
+      // Backward task → gateway is rare and resolved later by Phase 3b; not
+      // tracked here.
+      const nextIds = task.nextTaskIds?.length ? task.nextTaskIds : (task.nextTaskId ? [task.nextTaskId] : []);
+      nextIds.forEach(toId => {
+        const toTask = tasks.find(t => t.id === toId);
+        if (!toTask || toTask.type !== 'gateway') return;
+        addIncomingPort(toTask.id, 'left');
+      });
+    }
+  });
+
   const usedExitsByGateway = new Map();
   const gatewayUsed = (gid) => {
     if (!usedExitsByGateway.has(gid)) usedExitsByGateway.set(gid, new Set());
@@ -406,12 +438,17 @@ export function computeLayout(flow) {
     const r0 = condRouting.get(c.key);
     if (!r0) return;
     const used = gatewayUsed(c.gatewayId);
+    const incoming = incomingPortByGateway.get(c.gatewayId) || new Set();
 
-    const candidates = [r0.exitSide, ...c.priorities.filter(p => p !== r0.exitSide)];
-
+    // Walk the priority list from the top (ignoring the old r0.exitSide
+    // choice) so we can drop it if it conflicts with an incoming port —
+    // otherwise the outgoing arrow would land on the same side of the
+    // gateway as an incoming arrow (which the user explicitly flagged).
+    // Fall back to r0.exitSide only if every priority is blocked.
     let accepted = null;
-    for (const p of candidates) {
-      if (p !== r0.exitSide && used.has(p)) continue;
+    for (const p of c.priorities) {
+      if (used.has(p)) continue;
+      if (incoming.has(p)) continue;
       const testEntry = inferEntrySide(p, c.dr, c.dc);
       const range = topCorridorRange(p, testEntry, c.fr, c.fc, c.tr, c.tc);
       if (range && hasTopConflict(range.row, range.minCol, range.maxCol)) continue;

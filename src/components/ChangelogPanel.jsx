@@ -11,6 +11,16 @@ import { useState } from 'react';
 const CHANGELOG = [
   {
     date: '2026-04-21',
+    title: '閘道出口避開自身 incoming 端點',
+    items: [
+      '新增 incoming-port 感知：閘道選 outgoing 出口時，自動避開這個閘道**自身已被 incoming 佔用**的端點',
+      '使用者情境：`5-3-1-3 → 5-3-1-3_g1` forward 進 g1 的 left；原本 g1 的「未核准」loop-back 也挑 left 出口，兩條線在 g1 的 left port 重疊',
+      '修正後：未核准換成 bottom 出口 + right 入口（繞下方 corridor 指回 5-3-1-2 的右側），跟 incoming 完全分開',
+      '計算來源：gateway→gateway 用 condRouting 決定的 entry；regular task→gateway 預設 `left`',
+    ],
+  },
+  {
+    date: '2026-04-21',
     title: 'L4 編號規則一致化：編輯工具 / 流程圖顯示同步',
     items: [
       '**使用者規則**：開始事件 `-0`、結束事件 `-99`、閘道 `${前置任務}_g`（連續多個 `_g2`、`_g3`…）、中間任務從 1 開始只對**一般任務**順編（閘道不佔號）',
