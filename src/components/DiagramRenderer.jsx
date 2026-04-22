@@ -19,10 +19,27 @@ const HOVER_IN_STROKE  = '#7AB5DD'; // light blue        — what FEEDS INTO thi
 
 function wrapText(text, maxChars) {
   if (!text) return [];
+  // Tokenize: each CJK char / CJK-punct is its own token, each run of
+  // Latin/digit chars is one token, other single non-space chars are one
+  // token. Whitespace acts as separator only. This keeps English words
+  // intact on line breaks instead of slicing "Sourcer" → "Sourc"+"er".
+  const cjkRe = /[　-〿぀-ゟ゠-ヿ一-鿿＀-￯]/;
+  const tokens = text.match(/[　-〿぀-ゟ゠-ヿ一-鿿＀-￯]|[A-Za-z0-9]+|\S/g) || [];
+  // CJK occupies ~2x the horizontal space of a Latin char; treat maxChars
+  // as a CJK-equivalent budget (maxWidth = maxChars * 2 Latin units).
+  const tokWidth = t => [...t].reduce((s, c) => s + (cjkRe.test(c) ? 2 : 1), 0);
+  const isLatin = c => /[A-Za-z0-9]/.test(c);
+  const maxWidth = maxChars * 2;
   const lines = [];
-  for (let i = 0; i < text.length; i += maxChars) {
-    lines.push(text.slice(i, i + maxChars));
+  let cur = '', curW = 0;
+  for (const tok of tokens) {
+    const needsSpace = cur && isLatin(cur[cur.length - 1]) && isLatin(tok[0]);
+    const addW = tokWidth(tok) + (needsSpace ? 1 : 0);
+    if (!cur) { cur = tok; curW = tokWidth(tok); }
+    else if (curW + addW <= maxWidth) { cur += (needsSpace ? ' ' : '') + tok; curW += addW; }
+    else { lines.push(cur); cur = tok; curW = tokWidth(tok); }
   }
+  if (cur) lines.push(cur);
   return lines;
 }
 
@@ -141,10 +158,11 @@ function L3ActivityShape({ task, pos, l4Number, isHovered }) {
   const fill = isHovered ? HOVER_TINT : COLORS.L3_ACTIVITY_FILL;
   const stroke = isHovered ? HOVER_STROKE : COLORS.L3_ACTIVITY_STROKE;
   const strokeW = isHovered ? 2.5 : 1.5;
-  // When this element represents a subprocess call, show the called L3
-  // number as the primary label (BPMN Call Activity convention). Fall
-  // back to task.name for non-subprocess L3-activity shapes.
-  const subL3 = task.subprocessName?.trim();
+  // L3 number shown at top (via l4Number prop, which caller replaces with
+  // subprocessName for subprocess calls). Inside shows [子流程] + task.name
+  // as the contextual label; falls back to task.name only for plain L3
+  // activity shapes with no subprocessName.
+  const isSubprocess = !!task.subprocessName?.trim();
   return (
     <>
       <L4Number number={l4Number} cx={cx} y={y} />
@@ -154,17 +172,13 @@ function L3ActivityShape({ task, pos, l4Number, isHovered }) {
         stroke={stroke} strokeWidth={1} />
       <line x1={x + NODE_W - barW} y1={y} x2={x + NODE_W - barW} y2={y + NODE_H}
         stroke={stroke} strokeWidth={1} />
-      {subL3 ? (
+      {isSubprocess ? (
         <>
           <text x={cx} y={cy - 8} textAnchor="middle" dominantBaseline="middle"
             fontSize={10} fill="#6B7280" fontFamily="Microsoft JhengHei, PingFang TC, sans-serif">
             [子流程]
           </text>
-          <text x={cx} y={cy + 8} textAnchor="middle" dominantBaseline="middle"
-            fontSize={12} fontWeight="bold" fill={COLORS.TASK_TEXT}
-            fontFamily="Microsoft JhengHei, PingFang TC, sans-serif">
-            {subL3}
-          </text>
+          <SvgLabel text={task.name || ''} cx={cx} cy={cy + 10} maxChars={7} lineH={12} />
         </>
       ) : (
         <SvgLabel text={task.name} cx={cx} cy={cy} maxChars={7} lineH={14} />
@@ -516,8 +530,15 @@ export default function DiagramRenderer({ flow, showExport = true, autoExportPng
             const hoveredConnEndpoints = hc ? new Set([hc.fromId, hc.toId]) : null;
             return flow.tasks.map(task => {
             const pos = positions[task.id];
-            const num = l4Numbers[task.id];
             if (!pos) return null;
+            // Diagram label rule: only formal L3/L4 numbers appear on shapes.
+            // Hide identifier-only suffixes (`_g*`, `-0`, `-99`).
+            // L3 activity (subprocess call) shows the called L3 number instead.
+            let num = l4Numbers[task.id];
+            if (num && /(_g\d*|-0|-99)$/.test(num)) num = undefined;
+            if (task.type === 'l3activity' && task.subprocessName?.trim()) {
+              num = task.subprocessName.trim();
+            }
             const isHovered = hoveredId === task.id || (hoveredConnEndpoints?.has(task.id) ?? false);
             const props = { pos, l4Number: num, task, isHovered };
             let shape;
