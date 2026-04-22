@@ -604,6 +604,80 @@ export function computeLayout(flow) {
     });
   });
 
+  // ── 4f. Phase 3d: cross-lane forward obstacle avoidance ─────────
+  //
+  // A regular task → task/end forward edge where source and target are
+  // on different rows (dr ≠ 0, dc > 0) defaults to right→left with a
+  // midX vertical. If an intermediate task sits at source row, target
+  // row, or in the spanned rectangle, the default path cuts through it.
+  //
+  // Two alternative routings keep the vertical on a column guaranteed
+  // to be free of other tasks (source's or target's own column):
+  //   Option A — enter target from top/bottom (vertical at tc col)
+  //   Option B — exit source from top/bottom (vertical at fc col)
+  //
+  // User preference: "有跟任何任務重疊時，都可以優先考慮改變起始端點或結束端點".
+  // Try A first (target-side), then B (source-side), else keep default.
+  const taskCrossLaneRouting = new Map();
+  const cellTaskId = {};
+  tasks.forEach(t => {
+    const r = taskRowOf[t.id], c = taskColOf[t.id];
+    if (r !== undefined && c !== undefined) cellTaskId[`${r}::${c}`] = t.id;
+  });
+  const taskAt = (r, c) => cellTaskId[`${r}::${c}`];
+
+  tasks.forEach(task => {
+    if (task.type === 'end' || task.type === 'start' || task.type === 'gateway') return;
+    const nextIds = task.nextTaskIds?.length ? task.nextTaskIds : (task.nextTaskId ? [task.nextTaskId] : []);
+    const fr = taskRowOf[task.id], fc = taskColOf[task.id];
+    nextIds.forEach(toId => {
+      if (!toId || !taskIdSetAll.has(toId)) return;
+      if (taskBackwardRouting.has(`${task.id}::${toId}`)) return;
+      if (taskForwardRouting.has(`${task.id}::${toId}`)) return;
+      const tr = taskRowOf[toId], tc = taskColOf[toId];
+      if (tr === undefined || tc === undefined) return;
+      const dr = tr - fr, dc = tc - fc;
+      if (dr === 0 || dc <= 0) return;  // same-row or backward handled elsewhere
+
+      const rLo = Math.min(fr, tr), rHi = Math.max(fr, tr);
+
+      // Check default right→left midX path for overlaps.
+      let defaultBad = false;
+      for (let c = fc + 1; c < tc && !defaultBad; c++) {
+        if (taskAt(fr, c) || taskAt(tr, c)) defaultBad = true;
+      }
+      for (let r = rLo + 1; r < rHi && !defaultBad; r++) {
+        for (let c = fc + 1; c < tc && !defaultBad; c++) {
+          if (taskAt(r, c)) defaultBad = true;
+        }
+      }
+      if (!defaultBad) return;
+
+      // Option A: entry top/bottom (vertical at tc). Horizontal at row fr.
+      const entrySideA = dr > 0 ? 'top' : 'bottom';
+      let aBad = false;
+      for (let c = fc + 1; c < tc && !aBad; c++) if (taskAt(fr, c)) aBad = true;
+      for (let r = rLo + 1; r < rHi && !aBad; r++) if (taskAt(r, tc)) aBad = true;
+      if (!aBad && !hasIn(toId, entrySideA) && !hasOut(task.id, 'right')) {
+        taskCrossLaneRouting.set(`${task.id}::${toId}`, { exitSide: 'right', entrySide: entrySideA });
+        useOut(task.id, 'right'); useIn(toId, entrySideA);
+        return;
+      }
+
+      // Option B: exit top/bottom (vertical at fc). Horizontal at row tr.
+      const exitSideB = dr > 0 ? 'bottom' : 'top';
+      let bBad = false;
+      for (let r = rLo + 1; r < rHi && !bBad; r++) if (taskAt(r, fc)) bBad = true;
+      for (let c = fc + 1; c < tc && !bBad; c++) if (taskAt(tr, c)) bBad = true;
+      if (!bBad && !hasOut(task.id, exitSideB) && !hasIn(toId, 'left')) {
+        taskCrossLaneRouting.set(`${task.id}::${toId}`, { exitSide: exitSideB, entrySide: 'left' });
+        useOut(task.id, exitSideB); useIn(toId, 'left');
+        return;
+      }
+      // Else: keep default (both alternatives have their own obstacles).
+    });
+  });
+
   // ── 5. Count bottom-routing slots needed per lane ─────────────
   const bottomConnsByRow = roles.map(() => []);
   tasks.forEach(task => {
@@ -799,9 +873,12 @@ export function computeLayout(flow) {
         if (!toTask) return;
         // Forward short (default right→left) / backward (Phase 3b: top or
         // bottom based on top corridor occupancy) / forward long (Phase 3c:
-        // top corridor to skip over intermediate elements).
+        // top corridor to skip over intermediate elements) / cross-lane
+        // with obstacle avoidance (Phase 3d: source top/bottom exit or
+        // target top/bottom entry to skip around tasks at source/target rows).
         const routing = taskBackwardRouting.get(`${task.id}::${nextId}`)
-                     ?? taskForwardRouting.get(`${task.id}::${nextId}`);
+                     ?? taskForwardRouting.get(`${task.id}::${nextId}`)
+                     ?? taskCrossLaneRouting.get(`${task.id}::${nextId}`);
         let exitSide, entrySide, laneBottomY, laneTopCorridorY;
         if (routing) {
           exitSide = routing.exitSide;

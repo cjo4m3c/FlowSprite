@@ -22,6 +22,9 @@ const CHANGELOG = [
       'HelpPanel 範例、說明文字同步更新',
       '**流程圖文字換行改 token-aware**：原本按字元數切會把 `Sourcer` 切成 `Sourc` + `er`、`Purchasing Supervisor` 切成 `Purch` / `asing` / `Supe` / `rvisor`，現在英文單字、數字串視為不可分 token，CJK 字仍可逐字換行（使用者：「似乎會自動在單字的中間換行」）',
       '新的寬度計算視 CJK 為 2 倍寬、Latin 為 1 倍寬，maxChars 解讀為 CJK 等效寬度，泳道標題、任務名、事件名、描述欄位共用此邏輯',
+      '**跨泳道連線重疊偵測（Phase 3d）**：原本 task → task / task → end 的跨列 forward 連線用 midX 路徑（中間直線），若中間剛好有任務 (如 1-1-5-9 → 1-1-5-99 穿過 1-1-5-10、1-1-9-6 → 1-1-9-99 穿過 1-1-9-7) 會視覺重疊',
+      '新增對策：偵測到預設路徑會跨過任務矩形時，優先改走 ① 進入 target 的上/下端點（垂直段放 target 欄）或 ② 從 source 上/下端點出發（垂直段放 source 欄），兩者 source / target 欄本來就沒有其他任務，可避開障礙',
+      '依序嘗試 A（改 entry）→ B（改 exit）→ fallback 預設，配合 portIn / portOut 混用防呆（端點不可同時收 / 發）',
     ],
   },
   {
