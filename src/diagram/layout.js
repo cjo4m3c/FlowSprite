@@ -663,12 +663,12 @@ export function routeArrow(fromPos, toPos, exitSide, entrySide, laneBottomY) {
   const tx = toPos[entrySide].x;
   const ty = toPos[entrySide].y;
 
-  // Degenerate: already aligned → single segment
-  if (Math.abs(sx - tx) < 1 && Math.abs(sy - ty) < 1) return [[sx, sy], [tx, ty]];
-  if (Math.abs(sy - ty) < 1) return [[sx, sy], [tx, ty]];
-  if (Math.abs(sx - tx) < 1) return [[sx, sy], [tx, ty]];
-
   // ── Parallel corridors (same side in / out) ───────────────────
+  // Process BEFORE the degenerate-alignment shortcut below: for same-row
+  // bottom→bottom (or same-col top→top, etc.), source & target ports can
+  // be perfectly aligned (sy === ty), but we still need to detour via the
+  // corridor — the naïve straight line would cut through every element
+  // between them.
   if (exitSide === 'bottom' && entrySide === 'bottom') {
     const routeY = laneBottomY ?? (Math.max(sy, ty) + 24);
     return [[sx, sy], [sx, routeY], [tx, routeY], [tx, ty]];
@@ -685,6 +685,11 @@ export function routeArrow(fromPos, toPos, exitSide, entrySide, laneBottomY) {
     const corridorX = Math.max(sx, tx) + 24;
     return [[sx, sy], [corridorX, sy], [corridorX, ty], [tx, ty]];
   }
+
+  // Degenerate: already aligned → single segment (non-parallel cases only)
+  if (Math.abs(sx - tx) < 1 && Math.abs(sy - ty) < 1) return [[sx, sy], [tx, ty]];
+  if (Math.abs(sy - ty) < 1) return [[sx, sy], [tx, ty]];
+  if (Math.abs(sx - tx) < 1) return [[sx, sy], [tx, ty]];
 
   // ── Vertical exit (top/bottom) → any other entry ──
   // If target sits on the same side of source as the exit (ty would fall back

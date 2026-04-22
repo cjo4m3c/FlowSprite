@@ -135,19 +135,34 @@ function L3ActivityShape({ task, pos, l4Number, isHovered }) {
   const fill = isHovered ? HOVER_TINT : COLORS.L3_ACTIVITY_FILL;
   const stroke = isHovered ? HOVER_STROKE : COLORS.L3_ACTIVITY_STROKE;
   const strokeW = isHovered ? 2.5 : 1.5;
+  // When this element represents a subprocess call, show the called L3
+  // number as the primary label (BPMN Call Activity convention). Fall
+  // back to task.name for non-subprocess L3-activity shapes.
+  const subL3 = task.subprocessName?.trim();
   return (
     <>
       <L4Number number={l4Number} cx={cx} y={y} />
-      {/* Main rectangle */}
       <rect x={x} y={y} width={NODE_W} height={NODE_H}
         fill={fill} stroke={stroke} strokeWidth={strokeW} rx={0} />
-      {/* Left bookend bar */}
       <line x1={x + barW} y1={y} x2={x + barW} y2={y + NODE_H}
         stroke={stroke} strokeWidth={1} />
-      {/* Right bookend bar */}
       <line x1={x + NODE_W - barW} y1={y} x2={x + NODE_W - barW} y2={y + NODE_H}
         stroke={stroke} strokeWidth={1} />
-      <SvgLabel text={task.name} cx={cx} cy={cy} maxChars={7} lineH={14} />
+      {subL3 ? (
+        <>
+          <text x={cx} y={cy - 8} textAnchor="middle" dominantBaseline="middle"
+            fontSize={10} fill="#6B7280" fontFamily="Microsoft JhengHei, PingFang TC, sans-serif">
+            [子流程]
+          </text>
+          <text x={cx} y={cy + 8} textAnchor="middle" dominantBaseline="middle"
+            fontSize={12} fontWeight="bold" fill={COLORS.TASK_TEXT}
+            fontFamily="Microsoft JhengHei, PingFang TC, sans-serif">
+            {subL3}
+          </text>
+        </>
+      ) : (
+        <SvgLabel text={task.name} cx={cx} cy={cy} maxChars={7} lineH={14} />
+      )}
     </>
   );
 }
