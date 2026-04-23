@@ -159,7 +159,7 @@ export function generateFlowAnnotation(task, tasks, l4Map) {
  * Build the 2D array of rows (no header) for the Excel sheet.
  * Uses the task's stored metadata fields when available.
  */
-export function buildExcelRows(flow) {
+function buildExcelRows(flow) {
   const { l3Number, l3Name, roles, tasks } = flow;
   const roleById = {};
   (roles || []).forEach(r => { roleById[r.id] = r.name; });

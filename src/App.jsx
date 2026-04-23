@@ -15,8 +15,6 @@ export default function App() {
 
   function handleEdit(id) { setActiveFlowId(id); setView('view'); }
 
-  function handleView(id) { setActiveFlowId(id); setView('view'); }
-
   function handleSave(flow) {
     const duplicate = flows.find(f => f.id !== flow.id && f.l3Number && f.l3Number === flow.l3Number);
     if (duplicate) {
@@ -96,7 +94,6 @@ export default function App() {
       flows={flows}
       onNew={handleNew}
       onEdit={handleEdit}
-      onView={handleView}
       onDelete={handleDelete}
       onImportExcel={handleImportExcel}
       onTogglePin={handleTogglePin}

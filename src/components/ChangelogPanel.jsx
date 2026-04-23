@@ -11,6 +11,17 @@ import { useState } from 'react';
 const CHANGELOG = [
   {
     date: '2026-04-23',
+    title: '冗餘程式碼清理：抽共用 drag 元件 + 移除死 prop / 未用 import / 未用 export',
+    items: [
+      '**抽出 `src/components/dragReorder.jsx`**：`useDragReorder` hook 與 `DragHandle` 元件原本在 `Wizard.jsx` 與 `FlowEditor.jsx` 各複製一份（≈46 行 × 2），現在抽到共用檔案，兩邊 import 使用',
+      '**移除死 prop 鏈 `onView` / `handleView`**：`App.jsx` 傳 `onView` 給 `Dashboard` 但 `Dashboard` 內從未呼叫，整條鏈刪除',
+      '**移除未用 import `generateId`**（FlowEditor.jsx）、**未用常數 `L3_INSET`**（DiagramRenderer.jsx）',
+      '**`buildExcelRows` 由 `export` 降為 module-internal**：只被同檔的 `exportFlowToExcel` 使用',
+      '淨減 39 行（扣除新增 `dragReorder.jsx` 55 行）；修改 6 檔、新增 1 檔',
+    ],
+  },
+  {
+    date: '2026-04-23',
     title: '精靈改為 2 步（L3 資訊 → 角色）後直接進 FlowEditor',
     items: [
       '**情境**：使用者：「手動新增工作流的頁面中，設定完流程任務後，可以直接顯示像上傳 excel 時一樣的編輯畫面」',
