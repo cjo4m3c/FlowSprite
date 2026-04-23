@@ -56,16 +56,16 @@ const CHANGELOG = [
   },
   {
     date: '2026-04-23',
-    title: '流程圖標題列改顏色',
+    title: '流程圖標題列改為黑底',
     items: [
-      '**`TITLE_BG` 從 `#2A5598`（深藍）改成 `#111827`（黑）**,
+      '**`TITLE_BG` 從 `#2A5598`（深藍）改成 `#111827`（黑）**，跟主題深藍頁首區分，流程圖標題更突顯',
       '三個管道（網頁 SVG / PNG 下載 / drawio 下載）都共用 `COLORS.TITLE_BG`，同步生效',
       'ui-rules.md 色彩標準表同步更新',
     ],
   },
   {
     date: '2026-04-23',
-    title: '外部角色泳道改成綠色）',
+    title: '外部角色泳道改回綠色（跟內部藍色對比）',
     items: [
       '**`EXTERNAL_BG` 從 `#5B8AC9`（淡藍）改回 `#4CAF50`（綠色）**，內部角色維持 `#2A5598`（深藍）；兩者色相對比明顯，使用者一眼分辨內外',
       '同步更新：`src/diagram/constants.js`、Wizard / FlowEditor / Dashboard 的角色下拉選單與徽章顏色、`.claude/skills/ui-rules.md` 色彩標準表',
