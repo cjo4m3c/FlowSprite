@@ -1,27 +1,26 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { generateId } from '../utils/storage.js';
-import DiagramRenderer from './DiagramRenderer.jsx';
-import ConnectionSection from './ConnectionSection.jsx';
 import {
-  CONNECTION_TYPES, SHAPE_TYPES, CONN_BADGE, CONN_ROW_BG,
-  makeRole, makeTask, makeCondition,
-  normalizeTask, applyConnectionType, applySequentialDefaults,
-  computeDisplayLabels, taskOptionLabel,
+  makeRole, makeTask,
+  applySequentialDefaults,
   L3_NUMBER_PATTERN,
 } from '../utils/taskDefs.js';
 
+// The wizard is a 2-step kickoff (L3 info → roles) that seeds a minimal
+// flow (start + one task + end) and hands off to FlowEditor for the full
+// task editing experience. Excel import already opens FlowEditor directly;
+// keeping the wizard short mirrors that UX for the manual-entry path.
 function initFormData(flow) {
   if (flow) {
-    const migrated = (flow.tasks || []).map(t => {
-      const withIds = t.nextTaskIds?.length ? t : { ...t, nextTaskIds: t.nextTaskId ? [t.nextTaskId] : [] };
-      return normalizeTask(withIds);
-    });
-    return { ...flow, tasks: applySequentialDefaults(migrated) };
+    return { ...flow, tasks: applySequentialDefaults(flow.tasks || []) };
   }
-  const tasks = Array.from({ length: 8 }, (_, i) =>
-    makeTask({ connectionType: i === 0 ? 'start' : 'sequence', type: i === 0 ? 'start' : 'task' })
-  );
-  tasks.forEach((t, i) => { t.nextTaskIds = tasks[i + 1] ? [tasks[i + 1].id] : []; });
+  const tasks = [
+    makeTask({ connectionType: 'start',    type: 'start' }),
+    makeTask({ connectionType: 'sequence', type: 'task'  }),
+    makeTask({ connectionType: 'end',      type: 'end'   }),
+  ];
+  tasks[0].nextTaskIds = [tasks[1].id];
+  tasks[1].nextTaskIds = [tasks[2].id];
   return { id: generateId(), l3Number: '', l3Name: '', roles: [makeRole(), makeRole()], tasks };
 }
 
@@ -35,13 +34,11 @@ function useDragReorder(items, onReorder) {
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', '');
   }
-
   function onDragOver(e, i) {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     if (i !== overIdx) setOverIdx(i);
   }
-
   function onDrop(e, i) {
     e.preventDefault();
     if (dragIdx !== null && dragIdx !== i) {
@@ -50,29 +47,16 @@ function useDragReorder(items, onReorder) {
       next.splice(i, 0, moved);
       onReorder(next);
     }
-    setDragIdx(null);
-    setOverIdx(null);
+    setDragIdx(null); setOverIdx(null);
   }
-
-  function onDragEnd() {
-    setDragIdx(null);
-    setOverIdx(null);
-  }
-
+  function onDragEnd() { setDragIdx(null); setOverIdx(null); }
   function rowProps(i) {
-    return {
-      draggable: true,
-      onDragStart: e => onDragStart(e, i),
-      onDragOver:  e => onDragOver(e, i),
-      onDrop:      e => onDrop(e, i),
-      onDragEnd,
-    };
+    return { draggable: true, onDragStart: e => onDragStart(e, i),
+      onDragOver: e => onDragOver(e, i), onDrop: e => onDrop(e, i), onDragEnd };
   }
-
   return { dragIdx, overIdx, rowProps };
 }
 
-// ── Shared sub-components ────────────────────────────────────────
 function DragHandle() {
   return (
     <div className="flex items-center justify-center w-5 flex-shrink-0 cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 select-none">
@@ -85,21 +69,23 @@ function DragHandle() {
   );
 }
 
+// ── Step indicator ───────────────────────────────────────────────
 function StepIndicator({ current, steps }) {
   return (
-    <div className="flex items-center mb-8">
+    <div className="flex items-center justify-center mb-8">
       {steps.map((label, i) => (
-        <div key={i} className="flex items-center flex-1 last:flex-none">
-          <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold border-2 transition-colors flex-shrink-0 ${
-            i < current  ? 'bg-blue-600 border-blue-600 text-white' :
-            i === current ? 'bg-blue-50 border-blue-600 text-blue-700' :
-                            'bg-gray-100 border-gray-300 text-gray-400'
-          }`}>{i + 1}</div>
-          <span className={`ml-2 text-sm font-medium whitespace-nowrap ${
-            i === current ? 'text-blue-700' : i < current ? 'text-blue-500' : 'text-gray-400'
-          }`}>{label}</span>
+        <div key={i} className="flex items-center">
+          <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold transition-colors
+            ${i < current  ? 'bg-blue-600 text-white' :
+              i === current ? 'bg-blue-600 text-white ring-4 ring-blue-100' :
+                              'bg-gray-200 text-gray-500'}`}>
+            {i + 1}
+          </div>
+          <span className={`ml-2 text-sm ${i === current ? 'font-semibold text-blue-600' : 'text-gray-500'}`}>
+            {label}
+          </span>
           {i < steps.length - 1 && (
-            <div className={`flex-1 h-0.5 mx-3 ${i < current ? 'bg-blue-500' : 'bg-gray-200'}`} />
+            <div className={`w-8 h-0.5 mx-2 ${i < current ? 'bg-blue-600' : 'bg-gray-200'}`} />
           )}
         </div>
       ))}
@@ -217,239 +203,25 @@ function Step2({ data, onChange }) {
   );
 }
 
-// ── Step 3 sub-components ────────────────────────────────────────
-function TaskRow({ task, roles, allTasks, displayLabels, onUpdate, onRemove, canRemove, dragHandlers, isDragging, isOver }) {
-  const ct = task.connectionType || 'sequence';
-  const badge = CONN_BADGE[ct];
-  const num = displayLabels[task.id];
-  const rowBg = CONN_ROW_BG[ct] || '#FAFAFA';
-  const nameOptional = ct === 'start' || ct === 'end' || ct === 'breakpoint';
-  const showShape = ct === 'sequence' || ct === 'subprocess';
-
-  return (
-    <div
-      {...dragHandlers}
-      className={`rounded-lg border overflow-hidden transition-all select-none
-        ${isDragging ? 'opacity-40 scale-95' : ''}
-        ${isOver ? 'border-t-2 border-blue-400' : 'border-gray-200'}`}
-      style={{ background: rowBg }}>
-
-      {/* Main row */}
-      <div className="flex items-center gap-2 p-2 min-w-0">
-        <DragHandle />
-
-        {/* Badge / L4 number */}
-        <div className="w-14 flex-shrink-0 flex items-center">
-          {ct === 'sequence' && num ? (
-            <span className="text-xs font-mono text-gray-500 font-semibold">{num}</span>
-          ) : (
-            <span className="px-1.5 py-0.5 rounded text-xs font-bold whitespace-nowrap"
-              style={{ background: badge.bg, color: badge.text }}>
-              {badge.label || num}
-            </span>
-          )}
-        </div>
-
-        {/* Role */}
-        <select value={task.roleId} onChange={e => onUpdate({ ...task, roleId: e.target.value })}
-          className="w-24 flex-shrink-0 px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-400">
-          <option value="">角色 *</option>
-          {roles.filter(r => r.name).map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-        </select>
-
-        {/* Name */}
-        <input type="text" placeholder={nameOptional ? '名稱（選填）' : '任務名稱 *'}
-          value={task.name} onChange={e => onUpdate({ ...task, name: e.target.value })}
-          className="flex-1 min-w-0 px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-400" />
-
-        {/* Connection type */}
-        <select value={ct} onChange={e => onUpdate(applyConnectionType(task, e.target.value))}
-          className="w-28 flex-shrink-0 px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-400">
-          {CONNECTION_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-        </select>
-
-        {/* Shape type (only for sequence/subprocess) */}
-        {showShape ? (
-          <select value={task.shapeType || 'task'}
-            onChange={e => {
-              const st = e.target.value;
-              onUpdate({ ...task, shapeType: st, type: st });
-            }}
-            className="w-24 flex-shrink-0 px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-400">
-            {SHAPE_TYPES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-          </select>
-        ) : <div className="w-24 flex-shrink-0" />}
-
-        {/* Remove */}
-        <button onClick={onRemove} disabled={!canRemove}
-          className="w-6 flex-shrink-0 text-red-400 hover:text-red-600 disabled:opacity-20 disabled:cursor-not-allowed text-sm">✕</button>
-      </div>
-
-      {/* Connection config section */}
-      <div className="px-3 pb-2.5">
-        <ConnectionSection task={task} allTasks={allTasks} displayLabels={displayLabels} onUpdate={onUpdate} />
-      </div>
-    </div>
-  );
-}
-
-// ── Step 3: Tasks (with drag-and-drop) ───────────────────────────
-function Step3({ data, onChange }) {
-  const displayLabels = useMemo(
-    () => computeDisplayLabels(data.tasks, data.l3Number),
-    [data.tasks, data.l3Number]
-  );
-
-  const { dragIdx, overIdx, rowProps } = useDragReorder(
-    data.tasks,
-    newTasks => {
-      const updated = applySequentialDefaults(newTasks);
-      onChange({ tasks: updated });
-    }
-  );
-
-  function addTask() {
-    const newTask = makeTask();
-    onChange({ tasks: applySequentialDefaults([...data.tasks, newTask]) });
-  }
-
-  function updateTask(id, updated) {
-    onChange({ tasks: data.tasks.map(t => t.id === id ? updated : t) });
-  }
-
-  function removeTask(id) {
-    if (data.tasks.length <= 1) return;
-    onChange({ tasks: data.tasks.filter(t => t.id !== id) });
-  }
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h2 className="text-xl font-bold text-gray-800">L4 任務設定</h2>
-          <p className="text-sm text-gray-500 mt-0.5">設定流程步驟與連接關係</p>
-        </div>
-        <button onClick={addTask}
-          className="px-4 py-2 text-sm rounded-lg border border-dashed border-blue-400 text-blue-600 hover:bg-blue-50 transition-colors">
-          + 新增任務
-        </button>
-      </div>
-
-      <div className="flex flex-col gap-2">
-        {data.tasks.map((task, i) => (
-          <TaskRow
-            key={task.id}
-            task={task}
-            roles={data.roles}
-            allTasks={data.tasks}
-            displayLabels={displayLabels}
-            onUpdate={updated => updateTask(task.id, updated)}
-            onRemove={() => removeTask(task.id)}
-            canRemove={data.tasks.length > 1}
-            dragHandlers={rowProps(i)}
-            isDragging={dragIdx === i}
-            isOver={overIdx === i && dragIdx !== i}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ── Step 4: Preview ──────────────────────────────────────────────
-function Step4({ data }) {
-  return (
-    <div>
-      <h2 className="text-xl font-bold text-gray-800 mb-1">預覽泳道圖</h2>
-      <p className="text-sm text-gray-500 mb-4">確認流程圖是否符合預期，可返回上一步修改</p>
-      <DiagramRenderer flow={data} showExport={false} />
-    </div>
-  );
-}
-
-// ── Validation ───────────────────────────────────────────────────
+// ── Validation (only L3 info + roles; task editing moved to FlowEditor) ──
 function validate(step, data) {
   const errs = [];
   if (step >= 0) {
     if (!data.l3Number.trim()) errs.push('請填寫 L3 活動編號');
     if (!data.l3Name.trim())   errs.push('請填寫 L3 活動名稱');
-    if (!L3_NUMBER_PATTERN.test(data.l3Number.trim())) errs.push('L3 編號格式錯誤（例：1-1-1）');
+    if (data.l3Number.trim() && !L3_NUMBER_PATTERN.test(data.l3Number.trim())) {
+      errs.push('L3 編號格式錯誤（例：1-1-1）');
+    }
   }
   if (step >= 1) {
     const namedRoles = data.roles.filter(r => r.name.trim());
     if (namedRoles.length < 1) errs.push('至少需要 1 個已命名的角色');
   }
-  if (step >= 2) {
-    const tasks = data.tasks;
-    const taskMap = Object.fromEntries(tasks.map(t => [t.id, t]));
-
-    tasks.forEach((t, i) => {
-      const label = `任務 ${i + 1}`;
-      const ct = t.connectionType || 'sequence';
-      if (!t.roleId) errs.push(`${label}：請選擇負責角色`);
-
-      if (ct === 'sequence' || ct === 'start') {
-        // ok if no next (last task)
-      } else if (ct === 'subprocess') {
-        if (!t.subprocessName?.trim()) errs.push(`${label}：請填寫子流程名稱`);
-      } else if (ct === 'conditional-branch') {
-        const conds = t.conditions || [];
-        if (conds.length < 2) errs.push(`${label}：條件分支至少需要 2 個條件`);
-        conds.forEach((c, ci) => {
-          if (!c.label?.trim()) errs.push(`${label} 條件 ${ci + 1}：請填寫條件標籤`);
-          if (!c.nextTaskId)    errs.push(`${label} 條件 ${ci + 1}：請選擇目標任務`);
-        });
-      } else if (ct === 'parallel-branch') {
-        const conds = t.conditions || [];
-        if (conds.length < 2) errs.push(`${label}：並行分支至少需要 2 個目標`);
-        conds.forEach((c, ci) => {
-          if (!c.nextTaskId) errs.push(`${label} 並行目標 ${ci + 1}：請選擇目標任務`);
-        });
-      } else if (ct === 'parallel-merge' || ct === 'conditional-merge') {
-        const incomingCount = tasks.filter(other => {
-          if (other.id === t.id) return false;
-          const oct = other.connectionType || 'sequence';
-          if (oct === 'parallel-branch' || oct === 'conditional-branch') {
-            return (other.conditions || []).some(c => c.nextTaskId === t.id);
-          }
-          return (other.nextTaskIds || []).includes(t.id);
-        }).length;
-        if (incomingCount < 2) errs.push(`${label}：合併節點需要至少 2 個來源指向它`);
-      } else if (ct === 'loop-return') {
-        if (!t.nextTaskIds?.[0]) errs.push(`${label}：請選擇「迴圈返回至」的目標任務`);
-      }
-    });
-
-    const hasStart = tasks.some(t => t.connectionType === 'start');
-    const hasEnd   = tasks.some(t => t.connectionType === 'end' || t.connectionType === 'breakpoint');
-    if (!hasStart) errs.push('流程需要至少一個「流程開始」節點');
-    if (!hasEnd)   errs.push('流程需要至少一個「流程結束」或「流程斷點」節點');
-
-    // Check all tasks (except start) have at least one incoming connection
-    const reachable = new Set();
-    tasks.forEach(t => {
-      const ct = t.connectionType || 'sequence';
-      if (ct === 'conditional-branch' || ct === 'parallel-branch') {
-        (t.conditions || []).forEach(c => { if (c.nextTaskId) reachable.add(c.nextTaskId); });
-      } else if (ct === 'parallel-merge' || ct === 'conditional-merge') {
-        const c0 = t.conditions?.[0];
-        if (c0?.nextTaskId) reachable.add(c0.nextTaskId);
-      } else if (ct === 'loop-return') {
-        (t.nextTaskIds || []).filter(Boolean).forEach(id => reachable.add(id));
-      } else {
-        (t.nextTaskIds || []).filter(Boolean).forEach(id => reachable.add(id));
-      }
-    });
-    tasks.forEach((t, i) => {
-      if (t.connectionType === 'start') return;
-      if (!reachable.has(t.id)) errs.push(`任務 ${i + 1}「${t.name || '未命名'}」：沒有任何來源連結到此任務`);
-    });
-  }
   return errs;
 }
 
 // ── Main Wizard ──────────────────────────────────────────────────
-const STEPS = ['L3 基本資訊', '泳道角色', 'L4 任務', '預覽'];
+const STEPS = ['L3 基本資訊', '泳道角色'];
 
 export default function Wizard({ flow, onSave, onCancel }) {
   const [step, setStep]     = useState(0);
@@ -474,9 +246,14 @@ export default function Wizard({ flow, onSave, onCancel }) {
   }
 
   function handleSave() {
-    const errs = validate(step, data);
+    // Validate all steps before handing off to FlowEditor.
+    const errs = [...validate(0, data), ...validate(1, data)];
     if (errs.length) { setErrors(errs); return; }
-    onSave(data);
+    // Assign the first named role to seeded tasks so they're immediately
+    // usable inside FlowEditor without the user having to re-touch each card.
+    const firstRoleId = data.roles.find(r => r.name.trim())?.id ?? data.roles[0]?.id;
+    const seededTasks = data.tasks.map(t => t.roleId ? t : { ...t, roleId: firstRoleId });
+    onSave({ ...data, tasks: seededTasks });
   }
 
   return (
@@ -484,7 +261,7 @@ export default function Wizard({ flow, onSave, onCancel }) {
       <header className="px-6 py-3 shadow-md flex items-center gap-4" style={{ background: '#2A5598', color: 'white' }}>
         <button onClick={onCancel} className="opacity-70 hover:opacity-100 text-sm">← 返回</button>
         <span className="text-lg font-bold tracking-wide">
-          {flow ? `編輯：${data.l3Number} ${data.l3Name}` : '新增 L3 活動'}
+          {flow ? `編輯：${data.l3Number} ${data.l3Name}` : '新增 L3 工作流'}
         </span>
       </header>
 
@@ -503,8 +280,6 @@ export default function Wizard({ flow, onSave, onCancel }) {
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
           {step === 0 && <Step1 data={data} onChange={handleChange} />}
           {step === 1 && <Step2 data={data} onChange={handleChange} />}
-          {step === 2 && <Step3 data={data} onChange={handleChange} />}
-          {step === 3 && <Step4 data={data} />}
         </div>
 
         <div className="flex justify-between">
@@ -526,7 +301,7 @@ export default function Wizard({ flow, onSave, onCancel }) {
               style={{ background: '#2A5598' }}
               onMouseEnter={e => e.currentTarget.style.background = '#1E4677'}
               onMouseLeave={e => e.currentTarget.style.background = '#2A5598'}>
-              儲存並完成
+              進入編輯流程 →
             </button>
           )}
         </div>
