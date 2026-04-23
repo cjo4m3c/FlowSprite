@@ -54,7 +54,17 @@ export default function App() {
     refreshFlows();
   }
 
-  function handleImportExcel(importedFlows) {
+  function handleImportExcel(importedFlows, mode = 'keep') {
+    // mode='overwrite': delete every existing flow whose l3Number matches an
+    // imported one (only those L3 numbers, not the whole list), so the user
+    // can re-import a single activity cleanly. mode='keep' leaves existing
+    // flows untouched (duplicates will coexist).
+    if (mode === 'overwrite') {
+      const importedNums = new Set(importedFlows.map(f => f.l3Number).filter(Boolean));
+      flows.forEach(f => {
+        if (importedNums.has(f.l3Number)) deleteFlow(f.id);
+      });
+    }
     importedFlows.forEach(f => saveFlow(f));
     refreshFlows();
     if (importedFlows.length === 1) {
