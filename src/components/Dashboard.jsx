@@ -251,10 +251,10 @@ export default function Dashboard({ flows, onNew, onEdit, onView, onDelete, onIm
             />
             <button
               onClick={() => { setImportError(''); fileInputRef.current?.click(); }}
-              className="px-4 py-2 rounded-lg font-medium text-sm shadow transition-colors border"
-              style={{ background: '#3470B5', color: 'white', borderColor: '#3470B5' }}
-              onMouseEnter={e => e.currentTarget.style.background = '#274F86'}
-              onMouseLeave={e => e.currentTarget.style.background = '#3470B5'}>
+              className="px-5 py-2 rounded-lg text-white font-medium shadow transition-colors"
+              style={{ background: '#2A5598' }}
+              onMouseEnter={e => e.currentTarget.style.background = '#1E4677'}
+              onMouseLeave={e => e.currentTarget.style.background = '#2A5598'}>
               上傳 Excel
             </button>
 
@@ -263,7 +263,7 @@ export default function Dashboard({ flows, onNew, onEdit, onView, onDelete, onIm
               style={{ background: '#2A5598' }}
               onMouseEnter={e => e.currentTarget.style.background = '#1E4677'}
               onMouseLeave={e => e.currentTarget.style.background = '#2A5598'}>
-              + 新增 L3 活動
+              + 新增 L3 工作流
             </button>
           </div>
         </div>
