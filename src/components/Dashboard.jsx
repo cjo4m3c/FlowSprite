@@ -63,7 +63,7 @@ function sortFlows(flows, sortKey) {
   return [...arr.filter(f => f.pinned), ...arr.filter(f => !f.pinned)];
 }
 
-export default function Dashboard({ flows, onNew, onEdit, onView, onDelete, onImportExcel, onTogglePin }) {
+export default function Dashboard({ flows, onNew, onEdit, onDelete, onImportExcel, onTogglePin }) {
   const [sortKey, setSortKey] = useState('number-asc');
   const [importError, setImportError] = useState('');
   const [importSuccess, setImportSuccess] = useState('');
