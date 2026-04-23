@@ -507,27 +507,6 @@ export function computeLayout(flow) {
     (Math.abs(a.dr) + Math.abs(a.dc)) - (Math.abs(b.dr) + Math.abs(b.dc))
   );
 
-  // Pre-scan non-gateway backward edges so Phase 3 below knows which targets
-  // will receive a top→top back-edge in Phase 3b. Without this, a gateway
-  // forward-skip condition choosing top→top to the same target would land
-  // on the target's TOP center x right where the back-edge also lands — two
-  // arrows converging on one point from opposite horizontal directions
-  // (visually reads as a port-mix even though both are INs). Phase 3's
-  // acceptance loop uses this set to shift such a condition's entry from
-  // `top` → `left`, keeping the same corridor but landing on the target's
-  // LEFT edge (a distinct x) so the two arrows stay visually separated.
-  const expectedBackwardTopEntry = new Set();
-  tasks.forEach(task => {
-    if (task.type === 'end' || task.type === 'gateway' || task.type === 'start') return;
-    const nextIds = task.nextTaskIds?.length ? task.nextTaskIds : (task.nextTaskId ? [task.nextTaskId] : []);
-    const fr = taskRowOf[task.id], fc = taskColOf[task.id];
-    nextIds.forEach(toId => {
-      if (!toId || taskRowOf[toId] === undefined) return;
-      const tr = taskRowOf[toId], tc = taskColOf[toId];
-      const isBackward = (tc < fc) || (tc === fc && tr < fr);
-      if (isBackward) expectedBackwardTopEntry.add(toId);
-    });
-  });
 
   // Compute incoming ports per gateway so the outgoing-port selection below
   // can avoid colliding with a port that already has an arrow landing on it.
@@ -582,17 +561,11 @@ export function computeLayout(flow) {
     for (const p of c.priorities) {
       if (used.has(p)) continue;
       if (incoming.has(p)) continue;
-      let testEntry = inferEntrySide(p, c.dr, c.dc);
-      // If this forward condition would land on target's TOP at center x,
-      // but the target will also receive a backward-edge top→top in Phase 3b
-      // (which lands on the same center x), shift THIS entry to `left` so
-      // the two arrows land at distinct x (gateway on target's LEFT edge,
-      // back-edge on target's TOP center).
-      if (
-        p === 'top' && testEntry === 'top' &&
-        c.dc > 0 && expectedBackwardTopEntry.has(c.toId)
-      ) {
-        testEntry = 'left';
+      const testEntry = inferEntrySide(p, c.dr, c.dc);
+      // Two INs sharing one port (e.g. gateway forward top→top + backward
+      // loop-back top→top both landing on target's TOP center) is allowed
+      // per the user rule "端點不能同時有進有出" — IN + IN is fine. No
+      // special override needed here.
       }
       const range = topCorridorRange(p, testEntry, c.fr, c.fc, c.tr, c.tc);
       if (range && hasTopConflict(range.row, range.minCol, range.maxCol)) continue;
