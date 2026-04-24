@@ -53,12 +53,46 @@ function migrateGatewaySuffix(tasks) {
   return updated;
 }
 
+/**
+ * PR H — clean stale `connectionOverrides` keys when loading from storage.
+ * An override key goes stale when:
+ *   - (regular task) the targetId it points at has been deleted
+ *   - (gateway) the condId it points at has been removed
+ * Stale keys can't be interpreted and cause silent confusion in the diagram.
+ * Drop them at load time so downstream (layout, UI) sees only valid overrides.
+ */
+function cleanStaleOverrides(tasks) {
+  if (!Array.isArray(tasks)) return tasks;
+  const validTaskIds = new Set(tasks.map(t => t?.id).filter(Boolean));
+  const condIdsByGateway = new Map();
+  tasks.forEach(t => {
+    if (t?.type === 'gateway') {
+      condIdsByGateway.set(t.id, new Set((t.conditions || []).map(c => c.id)));
+    }
+  });
+  return tasks.map(t => {
+    const ov = t?.connectionOverrides;
+    if (!ov || typeof ov !== 'object' || Object.keys(ov).length === 0) return t;
+    const cleaned = {};
+    for (const [key, value] of Object.entries(ov)) {
+      if (t.type === 'gateway') {
+        const valid = condIdsByGateway.get(t.id);
+        if (valid && valid.has(key)) cleaned[key] = value;
+      } else {
+        if (validTaskIds.has(key)) cleaned[key] = value;
+      }
+    }
+    return { ...t, connectionOverrides: cleaned };
+  });
+}
+
 function migrateFlow(flow) {
   if (!flow) return flow;
   let tasks = Array.isArray(flow.tasks)
     ? flow.tasks.map(t => (t && t.l4Number ? { ...t, l4Number: normalizeNumber(t.l4Number) } : t))
     : flow.tasks;
   tasks = migrateGatewaySuffix(tasks);
+  tasks = cleanStaleOverrides(tasks);
   return { ...flow, l3Number: normalizeNumber(flow.l3Number), tasks };
 }
 
