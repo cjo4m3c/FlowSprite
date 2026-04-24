@@ -80,12 +80,13 @@ FlowSprite/
     ├── index.css                  # Tailwind + logo 動畫 + scrollbar
     ├── components/
     │   ├── Dashboard.jsx          # 首頁清單、Excel 上傳、批量操作
-    │   ├── Wizard.jsx             # 新增 L3 的四步驟精靈
-    │   ├── FlowEditor.jsx         # 編輯已存在 L3（流程圖 + 頁籤式編輯）
+    │   ├── Wizard.jsx             # 新增 L3 的 2 步驟精靈（L3 資訊 → 角色），完成後進 FlowEditor
+    │   ├── FlowEditor.jsx         # 編輯 L3（流程圖 + 頁籤式編輯 + 儲存前檢核兩層）
     │   ├── FlowTable.jsx          # L4 任務明細表
     │   ├── DiagramRenderer.jsx    # SVG 泳道圖 + PNG/drawio 按鈕
     │   ├── ConnectionSection.jsx  # 任務卡的連線設定 UI
     │   ├── BackToTop.jsx          # 右下角浮動回到頂端按鈕
+    │   ├── dragReorder.jsx        # 共用的 useDragReorder hook + DragHandle（Wizard / FlowEditor 共用）
     │   ├── HelpPanel.jsx          # 規則說明 Modal
     │   └── ChangelogPanel.jsx     # 版本更新紀錄 Modal（每次功能後加一筆）
     ├── diagram/
@@ -206,7 +207,7 @@ FlowSprite/
 
 - **無後端**：資料無法跨裝置、無版本歷史（只有使用者自己下載 Excel 當備份）
 - **瀏覽器限制**：Excel/PNG 匯出受 `html-to-image` + browser memory 限制，非常大的流程圖可能產出失敗
-- **`layout.js` 龐大**：連線路由有多個 phase（Phase 1 sibling 分配 → Phase 2 target entry 分配 → Phase 3 跨閘道衝突 + sibling-sharing fallback → Phase 3b 任務 backward → Phase 3c 任務 forward 長跳欄 → Phase 3d 跨列 forward 障礙避開 → 上下 corridor slot 分配），改動容易牽一髮動全身；改前先讀 PR #16~#46 的 description 建立脈絡
+- **`layout.js` 龐大（~1100 行）**：連線路由有多個 phase（Phase 1 sibling 分配 → Phase 2 target entry 分配 → Phase 3 跨閘道衝突 + Pass 2 sibling-sharing fallback + corridor guard → Phase 3b 任務 backward → Phase 3c 任務 forward 長跳欄 → Phase 3d 跨列 forward 障礙避開 + cross-edge 重疊偵測 → 上下 corridor slot 分配），改動容易牽一髮動全身；改前先讀 PR #16~#55 的 description 建立脈絡
 - **中文 regex 敏感**：`excelImport.js` 用中文關鍵字（`條件分支至` 等），對全形/半形、多餘空白、標點符號變體敏感
 - **無自動化測試**：驗證靠 `npm run build` + 手動瀏覽器測試 + `node trace.mjs` 臨時腳本
 
