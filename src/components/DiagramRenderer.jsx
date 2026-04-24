@@ -858,8 +858,6 @@ export default function DiagramRenderer({ flow, showExport = true, autoExportPng
           })}
 
           {/* Drag preview: a dashed line from the anchor task's proposed
-
-          {/* Drag preview: a dashed line from the anchor task's proposed
               side to the other endpoint, so the user sees how the path
               will redraw before releasing. */}
           {editable && dragInfo && dragInfo.proposedSide && (() => {
