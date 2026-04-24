@@ -19,6 +19,7 @@ import {
   normalizeTask, applyConnectionType, applySequentialDefaults,
   computeDisplayLabels,
 } from '../utils/taskDefs.js';
+import { detectOverrideViolations } from '../diagram/violations.js';
 
 // ── Pre-save validation ──────────────────────────────────────
 // Split into two tiers so the user can still save an imperfect draft:
@@ -96,7 +97,14 @@ function validateFlow(flow) {
     }
   });
 
-  return { blocking, warnings };
+  // PR H — override-induced violations. Blocking: IN+OUT mix on same port.
+  // Warning: line crosses another task. Auto-routing already avoids both,
+  // so these only fire when a user override forces the condition.
+  const { blocking: ovBlocking, warnings: ovWarnings } = detectOverrideViolations(flow);
+  return {
+    blocking: [...blocking, ...ovBlocking],
+    warnings: [...warnings, ...ovWarnings],
+  };
 }
 
 // ── TaskCard ────────────────────────────────────────────────
@@ -222,7 +230,9 @@ export default function FlowEditor({ flow, onBack, onSave }) {
   const [hasChanges, setHasChanges] = useState(false);
   const [activeTab, setActiveTab] = useState('flow'); // 'flow' | 'table' | 'roles'
   const [logoReaction, setLogoReaction] = useState(null); // 'wave' | null
-  const [saveModal, setSaveModal] = useState(null); // { type: 'blocking'|'warning', messages: [] }
+    const [saveModal, setSaveModal] = useState(null); // { type: 'blocking'|'warning', messages: [] }
+  // PR I: confirm-before-clear modal for "重設所有手動端點" global reset.
+  const [resetAllModal, setResetAllModal] = useState(false);
   
   useEffect(() => {
     if (!logoReaction) return;
@@ -256,7 +266,17 @@ export default function FlowEditor({ flow, onBack, onSave }) {
 
   function removeTask(id) {
     if (liveFlow.tasks.length <= 1) return;
-    patch({ tasks: liveFlow.tasks.filter(t => t.id !== id) });
+    // PR H: drop the task, AND clear any other task's connectionOverrides
+    // key that points at the removed task. Gateway overrides are keyed by
+    // condId (not targetId) so they're unaffected by this deletion — only
+    // regular tasks need the cleanup.
+    const cleaned = liveFlow.tasks.filter(t => t.id !== id).map(t => {
+      if (t.type === 'gateway' || !t.connectionOverrides?.[id]) return t;
+      const newOv = { ...t.connectionOverrides };
+      delete newOv[id];
+      return { ...t, connectionOverrides: newOv };
+    });
+    patch({ tasks: cleaned });
   }
   
   // Merge a partial endpoint override into task.connectionOverrides. Called
@@ -322,6 +342,31 @@ export default function FlowEditor({ flow, onBack, onSave }) {
       };
     }
     updateTask(fromTaskId, updated);
+    }
+    updateTask(fromTaskId, updated);
+  }
+
+  // PR I — reset a single connection's override (both exit and entry side).
+  // Called from DiagramRenderer's "重設此連線端點" button when a connection
+  // with override is selected.
+  function resetConnectionOverride(fromTaskId, key) {
+    const task = liveFlow.tasks.find(t => t.id === fromTaskId);
+    if (!task?.connectionOverrides?.[key]) return;
+    const newOverrides = { ...task.connectionOverrides };
+    delete newOverrides[key];
+    updateTask(fromTaskId, { ...task, connectionOverrides: newOverrides });
+  }
+
+  // PR I — reset ALL manual endpoint overrides across every task. Confirmed
+  // via the resetAllModal first (destructive, hard to undo — the only
+  // recovery is editing each connection again or reloading from Excel).
+  function resetAllOverrides() {
+    const cleaned = liveFlow.tasks.map(t => {
+      if (!t.connectionOverrides || Object.keys(t.connectionOverrides).length === 0) return t;
+      return { ...t, connectionOverrides: {} };
+    });
+    patch({ tasks: cleaned });
+    setResetAllModal(false);
   }
 
       function doSave(flow) {
@@ -386,6 +431,17 @@ export default function FlowEditor({ flow, onBack, onSave }) {
           {hasChanges && (
             <span className="text-xs text-yellow-300 font-medium hidden sm:inline">● 未儲存</span>
           )}
+          {/* PR I: global reset for all manual endpoint overrides. Shown
+              only when the current flow has at least one override — avoids
+              an always-on destructive button. Opens a confirm modal. */}
+          {liveFlow.tasks.some(t => t.connectionOverrides && Object.keys(t.connectionOverrides).length > 0) && (
+            <button
+              onClick={() => setResetAllModal(true)}
+              title="重設所有手動拖曳的連線端點"
+              className="px-3 py-1 text-xs rounded border border-white border-opacity-40 text-white hover:bg-white hover:bg-opacity-10">
+              重設所有手動端點
+            </button>
+          )}
           <button
             onClick={handleTogglePin}
             title={liveFlow.pinned ? '取消置頂' : '置頂此工作流'}
@@ -410,7 +466,9 @@ export default function FlowEditor({ flow, onBack, onSave }) {
         {/* Diagram — always visible */}
         <DiagramRenderer flow={liveFlow} showExport={true}
           onUpdateOverride={updateConnectionOverride}
-          onChangeTarget={changeConnectionTarget} />
+          onUpdateOverride={updateConnectionOverride}
+          onChangeTarget={changeConnectionTarget}
+          onResetOverride={resetConnectionOverride} />
 
         {/* Tabs */}
         <div className="mt-6 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
@@ -542,6 +600,36 @@ export default function FlowEditor({ flow, onBack, onSave }) {
                   仍然儲存
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PR I: confirm modal for the global "重設所有手動端點" action.
+          Destructive (can't undo) → require explicit confirmation. */}
+      {resetAllModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.45)' }}
+          onClick={e => { if (e.target === e.currentTarget) setResetAllModal(false); }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col">
+            <div className="px-6 py-4 border-b border-amber-200 bg-amber-50">
+              <h2 className="text-lg font-bold text-amber-700">⚠️ 重設所有手動端點</h2>
+              <p className="text-xs text-gray-600 mt-1">此動作會清除本工作流所有連線的手動拖曳端點設定，回到自動路由。無法復原。</p>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-2">
+              <button
+                onClick={() => setResetAllModal(false)}
+                className="px-4 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-100 transition-colors">
+                取消
+              </button>
+              <button
+                onClick={resetAllOverrides}
+                className="px-4 py-2 rounded-lg text-sm text-white font-semibold transition-colors"
+                style={{ background: '#D97706' }}
+                onMouseEnter={e => e.currentTarget.style.background = '#B45309'}
+                onMouseLeave={e => e.currentTarget.style.background = '#D97706'}>
+                確定重設
+              </button>
             </div>
           </div>
         </div>
