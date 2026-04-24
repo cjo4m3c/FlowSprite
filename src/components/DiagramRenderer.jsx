@@ -258,7 +258,6 @@ function ArrowMarkers() {
 
 function ConnectionArrow({ conn, connKey, positions, hoveredId, hoveredConnKey,
   onHover, isSelected, onSelect, editable, isViolation }) {
-  onHover, isSelected, onSelect, editable }) {
   const from = positions[conn.fromId];
   const to = positions[conn.toId];
   if (!from || !to) return null;
@@ -286,6 +285,10 @@ function ConnectionArrow({ conn, connKey, positions, hoveredId, hoveredConnKey,
     strokeW = 2.5;
     markerId = 'ah-violation';
   } else if (isSelected) {
+    strokeColor = HOVER_STROKE;
+    strokeW = 2.5;
+    markerId = 'ah-hover';
+  } else if (hoveredConnKey === connKey) {
     strokeColor = HOVER_STROKE;
     strokeW = 2.5;
     markerId = 'ah-hover';
