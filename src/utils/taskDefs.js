@@ -81,6 +81,13 @@ export function makeTask(overrides = {}) {
     type: 'task', gatewayType: 'xor',
     conditions: [], nextTaskIds: [''],
     subprocessName: '', breakpointReason: '',
+    // User-defined manual endpoint overrides for outgoing connections.
+    //   key = target task id (for regular tasks) or condition.id (for gateway)
+    //   value = { exitSide?: 'top'|'right'|'bottom'|'left', entrySide?: same }
+    // Applied in src/diagram/layout.js as the last routing step, overriding
+    // the auto-computed exit/entry sides. See CLAUDE.md §10.1 rule 5 for the
+    // validation semantics (IN+OUT mix = blocking, crossing task = warning).
+    connectionOverrides: {},
     ...overrides,
   };
 }
@@ -120,6 +127,7 @@ export function normalizeTask(task) {
   return migrateLoopReturn({
     ...task, connectionType, shapeType, conditions, nextTaskIds,
     subprocessName: task.subprocessName || '', breakpointReason: task.breakpointReason || '',
+    connectionOverrides: task.connectionOverrides || {},
   });
 }
 
