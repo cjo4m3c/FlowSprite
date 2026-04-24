@@ -342,8 +342,6 @@ export default function FlowEditor({ flow, onBack, onSave }) {
       };
     }
     updateTask(fromTaskId, updated);
-    }
-    updateTask(fromTaskId, updated);
   }
 
   // PR I — reset a single connection's override (both exit and entry side).
