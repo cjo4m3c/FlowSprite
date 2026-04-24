@@ -253,7 +253,6 @@ function ArrowMarkers() {
         <polygon points="0 0, 8 3, 0 6" fill={VIOLATION_STROKE} />
       </marker>
     </defs>
-    </defs>
   );
 }
 
