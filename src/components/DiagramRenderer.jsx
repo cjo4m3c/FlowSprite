@@ -678,8 +678,6 @@ export default function DiagramRenderer({ flow, showExport = true, autoExportPng
           <span>點選連線可拖曳端點（🔵 圓點）：拖到原本任務的其他 port = 覆寫端點；拖到別的任務 = 換目標任務</span>
           {selectedConnKey && (
             <>
-          {selectedConnKey && (
-            <>
               <span className="text-blue-600">● 已選取連線</span>
               {/* PR I: reset button for the selected connection's override. */}
               {selectedConnHasOverride && onResetOverride && (
@@ -700,6 +698,8 @@ export default function DiagramRenderer({ flow, showExport = true, autoExportPng
               </button>
             </>
           )}
+        </div>
+      )}
 
       <div className="overflow-auto border border-gray-300 rounded-lg bg-white w-full">
         <div ref={exportRef} style={{ display: 'inline-block', background: '#fff' }}>
