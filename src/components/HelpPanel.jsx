@@ -12,7 +12,7 @@ import { useState } from 'react';
  * Sections:
  *   HIERARCHY    — L1–L5 level definitions
  *   ELEMENTS     — All diagram element types (shape, color, purpose)
- *   VALIDATION   — Wizard step-2→step-3 validation checks
+ *   VALIDATION   — FlowEditor save-time validation (blocking 擋儲存 / warning 跳 modal 由使用者決定)
  *   CONNECTIONS  — How tasks connect (nextTaskIds, parallel, gateway conditions)
  *   ROUTING      — Gateway exit/entry side logic based on dr/dc
  *   EXPORT       — Supported export formats and usage
@@ -89,44 +89,68 @@ const ELEMENTS = [
   },
 ];
 
+// FlowEditor 儲存前會跑兩層檢核（CLAUDE.md 規則 5）：
+//   tier='blocking' → 結構不合法，彈紅色 modal、無法儲存
+//   tier='warning'  → 建議修正，彈黃色 modal，使用者可選「仍然儲存」
+//   tier='import'   → 只在 Excel 匯入時檢查，非儲存檢核（留作參考）
 const VALIDATION = [
   {
+    tier: 'blocking',
     rule: '必須有開始事件',
-    detail: '流程中至少需要一個流程設定為「流程開始」的節點，否則無法進入圖表預覽。',
+    detail: '流程中至少需要一個流程設定為「流程開始」的節點，否則無法儲存。',
   },
   {
+    tier: 'blocking',
     rule: '必須有結束事件',
-    detail: '流程中至少需要一個流程設定為「流程結束」或「流程斷點」的節點，否則無法進入圖表預覽。',
+    detail: '流程中至少需要一個流程設定為「流程結束」或「流程斷點」的節點，否則無法儲存。',
   },
   {
+    tier: 'blocking',
+    rule: '開始事件必須連接到其他任務',
+    detail: '「流程開始」節點的 outgoing 不能為空，否則無法儲存。',
+  },
+  {
+    tier: 'blocking',
+    rule: '結束事件必須有其他任務連接到它',
+    detail: '「流程結束」/「流程斷點」節點的 incoming 不能為空，否則無法儲存。',
+  },
+  {
+    tier: 'warning',
     rule: '非結束節點必須設定下一步',
-    detail: '流程設定為「序列流向」、「條件分支」、「並行分支」、「子流程調用」、「迴圈返回」、「並行合併」、「條件合併」、「流程開始」的節點，都必須設定至少一個有效目標。「流程斷點」的下一步為選填。',
+    detail: '流程設定為「序列流向」、「條件分支」、「並行分支」、「子流程調用」、「迴圈返回」、「並行合併」、「條件合併」、「流程開始」的節點，都應該設定至少一個有效目標。未設定時跳 warning modal。',
   },
   {
+    tier: 'warning',
     rule: '並行合併：必須有 2 個以上來源',
-    detail: '流程設定為「並行合併」的節點，必須被至少 2 個其他節點的並行分支指向，否則驗證不通過。',
+    detail: '流程設定為「並行合併」的節點，應該被至少 2 個其他節點指向。',
   },
   {
+    tier: 'warning',
     rule: '條件合併：必須有 2 個以上條件分支來源',
-    detail: '流程設定為「條件合併」的節點，必須被至少 2 個「條件分支」節點的條件出口指向，否則驗證不通過。',
+    detail: '流程設定為「條件合併」的節點，應該被至少 2 個「條件分支」節點的條件出口指向。',
   },
   {
-    rule: '每個節點都必須被連接（有來源）',
-    detail: '除了「流程開始」節點之外，每個節點都必須被至少一條連線指向（即有入口）。孤立節點無法通過驗證。',
+    tier: 'warning',
+    rule: '每個節點都必須被連接（除開始外）',
+    detail: '「流程開始」節點以外，每個節點都應該被至少一條連線指向。孤立節點跳 warning。',
   },
   {
-    rule: '條件分支標籤必填',
-    detail: '流程設定為「條件分支」的節點，每個分支條件都必須填寫標籤文字。並行分支（AND 閘道）不需要條件標籤。',
-  },
-  {
+    tier: 'warning',
     rule: '迴圈返回必須指定目標',
-    detail: '流程設定為「迴圈返回」的任務必須選擇「迴圈返回至」的目標任務（通常是較前面的任務），否則驗證不通過。',
+    detail: '流程設定為「迴圈返回」的任務應該選擇「迴圈返回至」的目標任務（通常是較前面的任務）。',
   },
   {
+    tier: 'import',
+    rule: '條件分支標籤必填',
+    detail: '「條件分支」每個分支條件都必須填寫標籤文字。並行分支（AND 閘道）不需要條件標籤。（Excel 匯入時檢查）',
+  },
+  {
+    tier: 'import',
     rule: '閘道 L4 編號必須以 `_g` 結尾',
     detail: 'XOR / AND / OR 閘道的 L4 編號必須是 `前一任務編號_g`（單一）或 `_g1`、`_g2`、`_g3`…（連續多個）。Excel 匯入時若閘道列缺 `_g` 尾碼將被擋下。',
   },
   {
+    tier: 'import',
     rule: '閘道前綴必對應既有 L4 任務',
     detail: '閘道編號 `X_g` 的前綴 `X` 必須是同一份 Excel 中存在的 L4 任務。若 `X_g` 沒有對應任務，匯入會被擋下。',
   },
@@ -341,19 +365,28 @@ export default function HelpPanel() {
 
               {/* ── 3. Validation ── */}
               <Section title="驗證規則 Validation">
-                <p className="text-xs text-gray-400 mb-2">下列條件不滿足時，新增活動精靈中無法前進至「圖表預覽」步驟（既有活動可直接在編輯頁儲存）</p>
+                <p className="text-xs text-gray-400 mb-2">
+                  FlowEditor 按「儲存」時跑兩層檢核：<span className="text-red-700 font-medium">Blocking</span> 擋儲存、<span className="text-amber-700 font-medium">Warning</span> 跳 modal 由使用者決定是否仍然儲存。<span className="text-gray-600 font-medium">Import</span> 只在 Excel 匯入時檢查。
+                </p>
                 <div className="grid gap-2">
-                  {VALIDATION.map((v, i) => (
-                    <div key={i} className="flex gap-3 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
-                      <div className="w-6 h-6 rounded-full bg-red-200 text-red-700 text-xs font-bold flex items-center justify-center flex-shrink-0">
-                        {i + 1}
+                  {VALIDATION.map((v, i) => {
+                    const style = v.tier === 'blocking'
+                      ? { bg: 'bg-red-50',    border: 'border-red-100',    badgeBg: 'bg-red-200',    badgeText: 'text-red-700',    ruleText: 'text-red-800',    label: 'Blocking' }
+                      : v.tier === 'warning'
+                      ? { bg: 'bg-amber-50',  border: 'border-amber-100',  badgeBg: 'bg-amber-200',  badgeText: 'text-amber-700',  ruleText: 'text-amber-800',  label: 'Warning' }
+                      : { bg: 'bg-gray-50',   border: 'border-gray-200',   badgeBg: 'bg-gray-200',   badgeText: 'text-gray-700',   ruleText: 'text-gray-800',   label: 'Import' };
+                    return (
+                      <div key={i} className={`flex gap-3 ${style.bg} border ${style.border} rounded-lg px-3 py-2`}>
+                        <div className={`px-2 py-0.5 h-fit rounded ${style.badgeBg} ${style.badgeText} text-[10px] font-bold flex-shrink-0`}>
+                          {style.label}
+                        </div>
+                        <div>
+                          <div className={`font-medium ${style.ruleText}`}>{v.rule}</div>
+                          <div className="text-gray-500 text-xs mt-0.5">{v.detail}</div>
+                        </div>
                       </div>
-                      <div>
-                        <div className="font-medium text-red-800">{v.rule}</div>
-                        <div className="text-gray-500 text-xs mt-0.5">{v.detail}</div>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </Section>
 
