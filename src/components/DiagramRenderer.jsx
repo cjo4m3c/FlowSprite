@@ -631,7 +631,6 @@ export default function DiagramRenderer({ flow, showExport = true, autoExportPng
             </button>
           </div>
         </div>
-        </div>
       )}
 
       {editable && (
