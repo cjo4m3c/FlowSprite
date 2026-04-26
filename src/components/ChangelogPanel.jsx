@@ -9,7 +9,19 @@ import { useState } from 'react';
  */
 
 const CHANGELOG = [
-    {
+  {
+    date: '2026-04-25',
+    title: '凍結流程圖角色 header 欄位（橫向 scroll 時保持可見）',
+    items: [
+      '**情境**：使用者：「凍結流程圖角色欄位，這樣左右滑動的時候就可以一直知道這個泳道是誰的」',
+      '**作法**：DiagramRenderer 把每個 lane 的「左側 header bg + 角色名字」+ 垂直分隔線（x=LANE_HEADER_W）抽到一個 `<g ref={stickyHeadersRef}>`，渲染在 SVG 最後（疊在連線、任務之上）；scroll 容器加 `onScroll` listener，直接寫 `transform=translate(scrollLeft, 0)` 到那個 `<g>` 上 — 不走 React state 避免每次 scroll 都 re-render',
+      '**Lane body 維持原狀**：lane 背景 rect（x=LANE_HEADER_W, width=svgWidth-LANE_HEADER_W）跟底部 lane 分隔線都還在原本的 roles map 裡，跟著內容滾動',
+      '**PNG 匯出**：`handleExport` / `autoExportPng` 在呼叫 `toPng` 之前先 `resetStickyForExport()` — 把 sticky `<g>` transform 歸 0、scroll container 歸 0，避免 PNG 截到 sticky 偏移後的 header（看起來會在錯位）',
+      '**.drawio 匯出**：`drawioExport.js` 用 `computeLayout` 直出元件座標，沒經過 SVG sticky transform，匯出檔案不受影響',
+      '視覺優先序：sticky header（最上）> 拖曳 handle / drop-target highlight > 連線 / 任務 > lane body 底色',
+    ],
+  },
+  {
     date: '2026-04-24',
     title: '拖曳連線：違規檢核 + 自動清除 + 視覺指示 + 重設工具（PR H + PR I）',
     items: [

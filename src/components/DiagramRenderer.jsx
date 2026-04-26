@@ -436,6 +436,14 @@ export default function DiagramRenderer({ flow, showExport = true, autoExportPng
   onResetOverride = null }) {
   const exportRef = useRef(null);
   const svgRef = useRef(null);
+  // Sticky-role-header support: when the diagram is wider than the viewport,
+  // the user scrolls horizontally — but the role-header column on the left
+  // should stay visible so they can always see whose lane each task is in.
+  // We watch the scroll container's scrollLeft and apply a counter-translate
+  // to the sticky <g> that holds the role-header rects + names + the vertical
+  // separator at x=LANE_HEADER_W.
+  const scrollContainerRef = useRef(null);
+  const stickyHeadersRef = useRef(null);
   const [hoveredId, setHoveredId] = useState(null);
   const [hoveredConnKey, setHoveredConnKey] = useState(null);
   // Drag-endpoint state for connection override:
@@ -449,6 +457,7 @@ export default function DiagramRenderer({ flow, showExport = true, autoExportPng
 
   useEffect(() => {
     if (!autoExportPng || !exportRef.current) return;
+    resetStickyForExport();
     toPng(exportRef.current, { pixelRatio: 2, backgroundColor: '#ffffff' })
       .then(dataUrl => {
         const a = document.createElement('a');
@@ -471,6 +480,24 @@ export default function DiagramRenderer({ flow, showExport = true, autoExportPng
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [editable, dragInfo, selectedConnKey]);
+
+  // Sticky role header: keep the left column anchored to the viewport as the
+  // user scrolls horizontally. Direct DOM mutation (not React state) — runs
+  // every scroll tick so we avoid forcing a re-render of the whole SVG.
+  function handleScrollLeft() {
+    const sl = scrollContainerRef.current?.scrollLeft || 0;
+    if (stickyHeadersRef.current) {
+      stickyHeadersRef.current.setAttribute('transform', `translate(${sl}, 0)`);
+    }
+  }
+
+  // Before PNG export, reset sticky transform so the captured image has the
+  // role header at its natural x=0 position (otherwise the export would show
+  // the header offset by whatever scrollLeft the user happened to be at).
+  function resetStickyForExport() {
+    if (stickyHeadersRef.current) stickyHeadersRef.current.setAttribute('transform', 'translate(0, 0)');
+    if (scrollContainerRef.current) scrollContainerRef.current.scrollLeft = 0;
+  }
 
   if (!flow || !flow.roles?.length || !flow.tasks?.length) {
     return (
@@ -627,6 +654,7 @@ export default function DiagramRenderer({ flow, showExport = true, autoExportPng
 
   async function handleExport() {
     if (!exportRef.current) return;
+    resetStickyForExport();
     try {
       const dataUrl = await toPng(exportRef.current, { pixelRatio: 2, backgroundColor: '#ffffff' });
       const a = document.createElement('a');
@@ -701,7 +729,8 @@ export default function DiagramRenderer({ flow, showExport = true, autoExportPng
         </div>
       )}
 
-      <div className="overflow-auto border border-gray-300 rounded-lg bg-white w-full">
+      <div ref={scrollContainerRef} onScroll={handleScrollLeft}
+        className="overflow-auto border border-gray-300 rounded-lg bg-white w-full">
         <div ref={exportRef} style={{ display: 'inline-block', background: '#fff' }}>
         <svg ref={svgRef} width={svgWidth} height={svgHeight} xmlns="http://www.w3.org/2000/svg"
           onPointerMove={editable && dragInfo ? moveDrag : undefined}
@@ -719,8 +748,11 @@ export default function DiagramRenderer({ flow, showExport = true, autoExportPng
             {flow.l3Number}　{flow.l3Name}　— 業務活動泳道圖
           </text>
 
+          {/* Lane backgrounds + bottom borders. Role-header rect + name +
+              the vertical separator at x=LANE_HEADER_W are split out into
+              the sticky `<g>` near the end of this SVG so they stay anchored
+              to the viewport during horizontal scroll. */}
           {flow.roles.map((role, i) => {
-            const headerBg = role.type === 'external' ? COLORS.EXTERNAL_BG : COLORS.INTERNAL_BG;
             const laneY = laneTopY[i];
             const laneH = laneHeights[i];
             const laneBg = i % 2 === 0 ? COLORS.LANE_ODD : COLORS.LANE_EVEN;
@@ -735,27 +767,11 @@ export default function DiagramRenderer({ flow, showExport = true, autoExportPng
               <g key={role.id}>
                 <rect x={LANE_HEADER_W} y={fillTop} width={svgWidth - LANE_HEADER_W} height={fillH}
                   fill={laneBg} />
-                <rect x={0} y={fillTop} width={LANE_HEADER_W} height={fillH} fill={headerBg} />
-                {wrapText(role.name, 5).map((line, li) => {
-                  const lineH = 16;
-                  const total = (wrapText(role.name, 5).length - 1) * lineH;
-                  return (
-                    <text key={li} x={LANE_HEADER_W / 2} y={laneY + laneH / 2 - total / 2 + li * lineH}
-                      textAnchor="middle" dominantBaseline="middle"
-                      fill={COLORS.HEADER_TEXT} fontSize={13} fontWeight="bold"
-                      fontFamily="Microsoft JhengHei, PingFang TC, sans-serif">
-                      {line}
-                    </text>
-                  );
-                })}
                 <line x1={0} y1={laneY + laneH} x2={svgWidth} y2={laneY + laneH}
                   stroke={COLORS.LANE_BORDER} strokeWidth={1} />
               </g>
             );
           })}
-
-          <line x1={LANE_HEADER_W} y1={TITLE_H} x2={LANE_HEADER_W} y2={svgHeight}
-            stroke={COLORS.LANE_BORDER} strokeWidth={1.5} />
 
           {connections.map((conn, i) => (
             <ConnectionArrow key={i} conn={conn} connKey={`c${i}`} positions={positions}
@@ -904,6 +920,41 @@ export default function DiagramRenderer({ flow, showExport = true, autoExportPng
               </>
             );
           })()}
+
+          {/* Sticky role header column. Translated by `scrollLeft` via
+              `handleScrollLeft` so it stays anchored to the left of the
+              viewport while horizontal scrolling. Rendered LAST so it sits
+              on top of connection lines and tasks (the column should
+              visually cover anything that scrolls under it). */}
+          <g ref={stickyHeadersRef} transform="translate(0, 0)">
+            {flow.roles.map((role, i) => {
+              const headerBg = role.type === 'external' ? COLORS.EXTERNAL_BG : COLORS.INTERNAL_BG;
+              const laneY = laneTopY[i];
+              const laneH = laneHeights[i];
+              const prevBottom = i === 0 ? TITLE_H : laneTopY[i - 1] + laneHeights[i - 1];
+              const fillTop = prevBottom;
+              const fillH = laneY + laneH - fillTop;
+              const lineH = 16;
+              const lines = wrapText(role.name, 5);
+              const total = (lines.length - 1) * lineH;
+              return (
+                <g key={`sticky-${role.id}`}>
+                  <rect x={0} y={fillTop} width={LANE_HEADER_W} height={fillH} fill={headerBg} />
+                  {lines.map((line, li) => (
+                    <text key={li} x={LANE_HEADER_W / 2}
+                      y={laneY + laneH / 2 - total / 2 + li * lineH}
+                      textAnchor="middle" dominantBaseline="middle"
+                      fill={COLORS.HEADER_TEXT} fontSize={13} fontWeight="bold"
+                      fontFamily="Microsoft JhengHei, PingFang TC, sans-serif">
+                      {line}
+                    </text>
+                  ))}
+                </g>
+              );
+            })}
+            <line x1={LANE_HEADER_W} y1={TITLE_H} x2={LANE_HEADER_W} y2={svgHeight}
+              stroke={COLORS.LANE_BORDER} strokeWidth={1.5} />
+          </g>
         </svg>
         </div>
       </div>
