@@ -4,9 +4,9 @@ import { taskOptionLabel } from '../utils/taskDefs.js';
 /**
  * ContextMenu — pop-up shown when the user clicks a task shape on the diagram.
  *
- * Inline-edits name/role; buttons trigger add-before / add-after / delete /
- * add-connection / add-gateway. Connection and gateway sub-forms expand
- * inside the menu (not separate popups) so the user stays in one place.
+ * Inline-edits name/role/description; buttons trigger add-before / add-after
+ * / delete / add-connection / add-gateway. Connection and gateway sub-forms
+ * expand inside the menu (not separate popups) so the user stays in one place.
  *
  * Props:
  *   - task          the clicked task object (or null when closed)
@@ -146,6 +146,15 @@ export default function ContextMenu({
             ))}
           </select>
         </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-xs text-gray-500">任務重點說明</span>
+          <textarea value={task.description || ''}
+            onChange={(e) => onUpdate({ ...task, description: e.target.value })}
+            placeholder="說明這個任務的重點（會在流程圖 hover 時顯示）"
+            rows={3}
+            className="px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-400 resize-y leading-relaxed"
+          />
+        </label>
       </div>
 
       {/* Action buttons */}
@@ -203,7 +212,7 @@ export default function ContextMenu({
             className={`w-full px-3 py-2 text-left text-xs flex items-center gap-2 ${
               subForm === 'gateway' ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-blue-50 hover:text-blue-700'
             }`}>
-            <span className="text-blue-500">◇</span> 新增閘道（兩條連線）
+            <span className="text-blue-500">◇</span> 新增閘道(兩條連線)
             <span className="ml-auto text-gray-400">{subForm === 'gateway' ? '▴' : '▾'}</span>
           </button>
         )}
