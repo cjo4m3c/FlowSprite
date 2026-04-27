@@ -53,11 +53,16 @@ export default function FlowTable({ flow, onSave }) {
   const [tasks, setTasks] = useState(flow.tasks || []);
   const [hasChanges, setHasChanges] = useState(false);
 
-  // Sync when flow prop changes (e.g. after saving from Wizard and re-opening viewer)
+  // Sync when flow's identity OR task list changes. Watching only `flow.id`
+  // (the original implementation) missed in-place edits — adding a task via
+  // the drawer / ContextMenu mutated `flow.tasks` without changing `flow.id`,
+  // so this table stayed at its stale snapshot. Watching `flow.tasks`
+  // re-syncs whenever the parent's task array reference changes (insert /
+  // delete / drag-reorder all produce a new array).
   useEffect(() => {
     setTasks(flow.tasks || []);
     setHasChanges(false);
-  }, [flow.id]);
+  }, [flow.id, flow.tasks]);
 
   const l4Map = useMemo(
     () => buildTableL4Map(flow.l3Number, tasks),
