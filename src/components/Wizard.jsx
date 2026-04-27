@@ -90,7 +90,7 @@ function Step1({ data, onChange }) {
 
 // ── Step 2: Roles (with drag-and-drop) ──────────────────────────
 function Step2({ data, onChange }) {
-  const { dragIdx, overIdx, rowProps } = useDragReorder(
+  const { dragIdx, overIdx, dropAfter, rowProps } = useDragReorder(
     data.roles,
     newRoles => onChange({ roles: newRoles })
   );
@@ -119,7 +119,9 @@ function Step2({ data, onChange }) {
             {...rowProps(i)}
             className={`flex items-center gap-3 p-3 bg-gray-50 border rounded-lg transition-all select-none
               ${dragIdx === i ? 'opacity-40 scale-95' : ''}
-              ${overIdx === i && dragIdx !== i ? 'border-blue-400 border-t-2' : 'border-gray-200'}`}>
+              ${overIdx === i && dragIdx !== i
+                ? (dropAfter ? 'border-b-2 border-blue-500' : 'border-t-2 border-blue-500')
+                : 'border-gray-200'}`}>
             <DragHandle />
             <span className="text-xs text-gray-400 w-4 flex-shrink-0">#{i + 1}</span>
             <input type="text" placeholder="角色名稱" value={role.name}

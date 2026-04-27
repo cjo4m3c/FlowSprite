@@ -126,7 +126,7 @@ function validateFlow(flow) {
 }
 
 // ── TaskCard ────────────────────────────────────────────────
-function TaskCard({ task, roles, allTasks, displayLabels, onUpdate, onRemove, canRemove, dragHandlers, isDragging, isOver }) {
+function TaskCard({ task, roles, allTasks, displayLabels, onUpdate, onRemove, canRemove, dragHandlers, isDragging, isOver, dropAfter }) {
   const ct = task.connectionType || 'sequence';
   const badge = CONN_BADGE[ct];
   const num = displayLabels[task.id];
@@ -135,16 +135,22 @@ function TaskCard({ task, roles, allTasks, displayLabels, onUpdate, onRemove, ca
   const showShape = ct === 'sequence' || ct === 'subprocess';
   const [expanded, setExpanded] = useState(false);
 
+  // Drop indicator: thin blue line on top edge (drop above this row) or
+  // bottom edge (drop below). Falls back to neutral border otherwise.
+  const dropEdgeClass = isOver
+    ? (dropAfter ? 'border-b-2 border-blue-500' : 'border-t-2 border-blue-500')
+    : 'border-gray-200';
+
   return (
     <div
       {...dragHandlers}
       className={`rounded-lg border overflow-hidden transition-all select-none
         ${isDragging ? 'opacity-40 scale-95' : ''}
-        ${isOver ? 'border-t-2 border-blue-400' : 'border-gray-200'}`}
+        ${dropEdgeClass}`}
       style={{ background: rowBg }}>
 
-      {/* Main row */}
-      <div className="flex items-center gap-2 p-2 min-w-0">
+      {/* Row 1: drag + badge + role + name (wide) + actions */}
+      <div className="flex items-center gap-2 px-2 pt-2 min-w-0">
         <DragHandle />
 
         {/* Badge / number */}
@@ -166,25 +172,10 @@ function TaskCard({ task, roles, allTasks, displayLabels, onUpdate, onRemove, ca
           {roles.filter(r => r.name).map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
         </select>
 
-        {/* Name */}
+        {/* Name — gets all the remaining width on Row 1 */}
         <input type="text" placeholder={nameOptional ? '名稱（選填）' : '任務名稱 *'}
           value={task.name} onChange={e => onUpdate({ ...task, name: e.target.value })}
           className="flex-1 min-w-0 px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-400" />
-
-        {/* Connection type */}
-        <select value={ct} onChange={e => onUpdate(applyConnectionType(task, e.target.value))}
-          className="w-28 flex-shrink-0 px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-400">
-          {CONNECTION_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-        </select>
-
-        {/* Shape type (sequence/subprocess only) */}
-        {showShape ? (
-          <select value={task.shapeType || 'task'}
-            onChange={e => { const st = e.target.value; onUpdate({ ...task, shapeType: st, type: st }); }}
-            className="w-24 flex-shrink-0 px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-400">
-            {SHAPE_TYPES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-          </select>
-        ) : <div className="w-24 flex-shrink-0" />}
 
         {/* Expand / collapse detail fields */}
         <button onClick={() => setExpanded(v => !v)}
@@ -196,6 +187,27 @@ function TaskCard({ task, roles, allTasks, displayLabels, onUpdate, onRemove, ca
         {/* Remove */}
         <button onClick={onRemove} disabled={!canRemove}
           className="w-6 flex-shrink-0 text-red-400 hover:text-red-600 disabled:opacity-20 disabled:cursor-not-allowed text-sm">✕</button>
+      </div>
+
+      {/* Row 2: connection type + shape type (offset to align under name) */}
+      <div className="flex items-center gap-2 px-2 pt-1.5 pb-2 min-w-0">
+        {/* Spacer matches drag (~20) + badge (56) + role (96) + 3×gap (24) = 196 */}
+        <div className="w-[196px] flex-shrink-0" aria-hidden="true" />
+
+        {/* Connection type */}
+        <select value={ct} onChange={e => onUpdate(applyConnectionType(task, e.target.value))}
+          className="w-32 flex-shrink-0 px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-400">
+          {CONNECTION_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+        </select>
+
+        {/* Shape type (sequence/subprocess only) */}
+        {showShape && (
+          <select value={task.shapeType || 'task'}
+            onChange={e => { const st = e.target.value; onUpdate({ ...task, shapeType: st, type: st }); }}
+            className="w-24 flex-shrink-0 px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-400">
+            {SHAPE_TYPES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+          </select>
+        )}
       </div>
 
       {/* Connection config */}
@@ -269,7 +281,7 @@ export default function FlowEditor({ flow, onBack, onSave }) {
     [liveFlow.tasks, liveFlow.l3Number]
   );
 
-  const { dragIdx, overIdx, rowProps } = useDragReorder(
+  const { dragIdx, overIdx, dropAfter, rowProps } = useDragReorder(
     liveFlow.tasks,
     newTasks => {
       // Drop stored l4Number on reorder so computeDisplayLabels falls back
@@ -637,7 +649,8 @@ export default function FlowEditor({ flow, onBack, onSave }) {
           onUpdateOverride={updateConnectionOverride}
           onChangeTarget={changeConnectionTarget}
           onResetOverride={resetConnectionOverride}
-          onTaskClick={(task, x, y) => setContextMenu({ task, x, y })} />
+          onTaskClick={(task, x, y) => setContextMenu({ task, x, y })}
+          highlightedTaskId={contextMenu?.task?.id || null} />
 
         {/* Excel table — always visible (used to be a tab) */}
         <div className="mt-6 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden p-4">
@@ -674,6 +687,7 @@ export default function FlowEditor({ flow, onBack, onSave }) {
                   dragHandlers={rowProps(i)}
                   isDragging={dragIdx === i}
                   isOver={overIdx === i && dragIdx !== i}
+                  dropAfter={dropAfter}
                 />
               ))}
             </div>
