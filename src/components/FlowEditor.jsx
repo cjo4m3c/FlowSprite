@@ -103,7 +103,8 @@ function validateFlow(flow) {
       warnings.push(`${label}：閘道未指定泳道角色`);
     }
 
-    // 4. Every node except start must have incoming (already blocking for end,    //    this catches orphan middle nodes).
+    // 4. Every node except start must have incoming (already blocking for end,
+    //    this catches orphan middle nodes).
     if (!isStart(t) && !(incoming[t.id] > 0)) {
       warnings.push(`${label}：沒有任何任務連接到此節點`);
     }
