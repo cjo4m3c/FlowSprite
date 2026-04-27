@@ -13,6 +13,7 @@ import ConnectionSection from './ConnectionSection.jsx';
 import FlowTable from './FlowTable.jsx';
 import BackToTop from './BackToTop.jsx';
 import RightDrawer from './RightDrawer.jsx';
+import ContextMenu from './ContextMenu.jsx';
 import { useDragReorder, DragHandle } from './dragReorder.jsx';
 import {
   CONNECTION_TYPES, SHAPE_TYPES, CONN_BADGE, CONN_ROW_BG,
@@ -248,6 +249,9 @@ export default function FlowEditor({ flow, onBack, onSave }) {
   // Excel table moves out of tabs entirely → always shown below diagram.
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerTab, setDrawerTab] = useState('flow'); // 'flow' | 'roles'
+  // Context menu state: { task, x, y } when open, null when closed.
+  // Triggered by clicking a shape on the diagram.
+  const [contextMenu, setContextMenu] = useState(null);
   const [logoReaction, setLogoReaction] = useState(null); // 'wave' | null
     const [saveModal, setSaveModal] = useState(null); // { type: 'blocking'|'warning', messages: [] }
   // PR I: confirm-before-clear modal for "重設所有手動端點" global reset.
@@ -293,6 +297,38 @@ export default function FlowEditor({ flow, onBack, onSave }) {
   function addTask() {
     const newTask = makeTask();
     patch({ tasks: applySequentialDefaults([...liveFlow.tasks, newTask]) });
+  }
+
+  // Insert a new (sequence) task before / after the given anchor task.
+  // Used by ContextMenu's "在前面新增" / "在後面新增" actions.
+  function addTaskBefore(anchorId) {
+    const idx = liveFlow.tasks.findIndex(t => t.id === anchorId);
+    if (idx < 0) return;
+    const newTask = makeTask();
+    const next = [...liveFlow.tasks];
+    next.splice(idx, 0, newTask);
+    // Strip stored l4Number on insertion so numbering stays sequential
+    // (same rationale as the drag-reorder fix from the earlier PR).
+    const renumbered = next.map(t => {
+      if (!t.l4Number) return t;
+      const { l4Number, ...rest } = t;
+      return rest;
+    });
+    patch({ tasks: applySequentialDefaults(renumbered) });
+  }
+
+  function addTaskAfter(anchorId) {
+    const idx = liveFlow.tasks.findIndex(t => t.id === anchorId);
+    if (idx < 0) return;
+    const newTask = makeTask();
+    const next = [...liveFlow.tasks];
+    next.splice(idx + 1, 0, newTask);
+    const renumbered = next.map(t => {
+      if (!t.l4Number) return t;
+      const { l4Number, ...rest } = t;
+      return rest;
+    });
+    patch({ tasks: applySequentialDefaults(renumbered) });
   }
 
   function removeTask(id) {
@@ -505,7 +541,8 @@ export default function FlowEditor({ flow, onBack, onSave }) {
         <DiagramRenderer flow={liveFlow} showExport={true}
           onUpdateOverride={updateConnectionOverride}
           onChangeTarget={changeConnectionTarget}
-          onResetOverride={resetConnectionOverride} />
+          onResetOverride={resetConnectionOverride}
+          onTaskClick={(task, x, y) => setContextMenu({ task, x, y })} />
 
         {/* Excel table — always visible (used to be a tab) */}
         <div className="mt-6 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden p-4">
@@ -584,6 +621,25 @@ export default function FlowEditor({ flow, onBack, onSave }) {
           </div>
         )}
       </RightDrawer>
+
+      {/* ContextMenu — shown when user clicks a shape on the diagram */}
+      {contextMenu && (
+        <ContextMenu
+          task={contextMenu.task}
+          x={contextMenu.x}
+          y={contextMenu.y}
+          roles={liveFlow.roles || []}
+          onUpdate={(updated) => {
+            updateTask(contextMenu.task.id, updated);
+            // Reflect the edit in the menu's local task copy too.
+            setContextMenu(prev => prev ? { ...prev, task: updated } : prev);
+          }}
+          onAddBefore={addTaskBefore}
+          onAddAfter={addTaskAfter}
+          onDelete={removeTask}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
 
             <BackToTop />
 
