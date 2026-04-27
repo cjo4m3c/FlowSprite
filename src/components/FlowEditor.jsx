@@ -126,7 +126,7 @@ function validateFlow(flow) {
 }
 
 // ── TaskCard ────────────────────────────────────────────────
-function TaskCard({ task, roles, allTasks, displayLabels, onUpdate, onRemove, canRemove, dragHandlers, isDragging, isOver }) {
+function TaskCard({ task, roles, allTasks, displayLabels, onUpdate, onRemove, canRemove, dragHandlers, isDragging, isOver, dropAfter }) {
   const ct = task.connectionType || 'sequence';
   const badge = CONN_BADGE[ct];
   const num = displayLabels[task.id];
@@ -135,12 +135,18 @@ function TaskCard({ task, roles, allTasks, displayLabels, onUpdate, onRemove, ca
   const showShape = ct === 'sequence' || ct === 'subprocess';
   const [expanded, setExpanded] = useState(false);
 
+  // Drop indicator: thin blue line on top edge (drop above this row) or
+  // bottom edge (drop below). Falls back to neutral border otherwise.
+  const dropEdgeClass = isOver
+    ? (dropAfter ? 'border-b-2 border-blue-500' : 'border-t-2 border-blue-500')
+    : 'border-gray-200';
+
   return (
     <div
       {...dragHandlers}
       className={`rounded-lg border overflow-hidden transition-all select-none
         ${isDragging ? 'opacity-40 scale-95' : ''}
-        ${isOver ? 'border-t-2 border-blue-400' : 'border-gray-200'}`}
+        ${dropEdgeClass}`}
       style={{ background: rowBg }}>
 
       {/* Row 1: drag + badge + role + name (wide) + actions */}
@@ -275,7 +281,7 @@ export default function FlowEditor({ flow, onBack, onSave }) {
     [liveFlow.tasks, liveFlow.l3Number]
   );
 
-  const { dragIdx, overIdx, rowProps } = useDragReorder(
+  const { dragIdx, overIdx, dropAfter, rowProps } = useDragReorder(
     liveFlow.tasks,
     newTasks => {
       // Drop stored l4Number on reorder so computeDisplayLabels falls back
@@ -680,6 +686,7 @@ export default function FlowEditor({ flow, onBack, onSave }) {
                   dragHandlers={rowProps(i)}
                   isDragging={dragIdx === i}
                   isOver={overIdx === i && dragIdx !== i}
+                  dropAfter={dropAfter}
                 />
               ))}
             </div>
