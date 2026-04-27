@@ -21,6 +21,7 @@ import {
   normalizeTask, applyConnectionType, applySequentialDefaults,
   computeDisplayLabels,
 } from '../utils/taskDefs.js';
+import { generateId } from '../utils/storage.js';
 import { detectOverrideViolations } from '../diagram/violations.js';
 
 // ── Pre-save validation ──────────────────────────────────────
@@ -368,6 +369,63 @@ export default function FlowEditor({ flow, onBack, onSave }) {
     patch({ tasks: applySequentialDefaults(renumbered) });
   }
 
+  // ContextMenu: append a new outgoing connection from `fromTaskId` to
+  // `toTaskId`. Regular tasks just push to nextTaskIds (multi-target =
+  // parallel rendering). Gateways append a new condition.
+  function addConnection(fromTaskId, toTaskId) {
+    const task = liveFlow.tasks.find(t => t.id === fromTaskId);
+    if (!task || !toTaskId || fromTaskId === toTaskId) return;
+    if (task.type === 'gateway') {
+      const newCond = { id: generateId(), label: '', nextTaskId: toTaskId };
+      updateTask(fromTaskId, {
+        ...task,
+        conditions: [...(task.conditions || []), newCond],
+      });
+    } else {
+      const nexts = (task.nextTaskIds || []).filter(Boolean);
+      updateTask(fromTaskId, { ...task, nextTaskIds: [...nexts, toTaskId] });
+    }
+  }
+
+  // ContextMenu: insert a gateway after `anchorId` with two outgoing
+  // conditions to `targetId1` / `targetId2`. anchor → newGateway →
+  // [target1, target2]. anchor's old nextTaskIds are overwritten — if the
+  // user wanted to preserve them, they should pick them as one of the
+  // targets via the menu's dropdowns.
+  function insertGatewayAfter(anchorId, gatewayType, targetId1, targetId2) {
+    const idx = liveFlow.tasks.findIndex(t => t.id === anchorId);
+    if (idx < 0) return;
+    const anchor = liveFlow.tasks[idx];
+    const ctMap = {
+      xor: 'conditional-branch',
+      and: 'parallel-branch',
+      or:  'inclusive-branch',
+    };
+    const newGateway = makeTask({
+      type: 'gateway',
+      gatewayType,
+      connectionType: ctMap[gatewayType] || 'conditional-branch',
+      roleId: anchor.roleId || '',
+      conditions: [
+        { id: generateId(), label: '', nextTaskId: targetId1 || '' },
+        { id: generateId(), label: '', nextTaskId: targetId2 || '' },
+      ],
+      nextTaskIds: [],
+    });
+    // anchor's outgoing now points solely at the new gateway (overwrite).
+    const rewired = liveFlow.tasks.map(t =>
+      t.id === anchorId ? { ...t, nextTaskIds: [newGateway.id] } : t
+    );
+    const next = [...rewired];
+    next.splice(idx + 1, 0, newGateway);
+    const renumbered = next.map(t => {
+      if (!t.l4Number) return t;
+      const { l4Number, ...rest } = t;
+      return rest;
+    });
+    patch({ tasks: applySequentialDefaults(renumbered) });
+  }
+
   function removeTask(id) {
     if (liveFlow.tasks.length <= 1) return;
     // PR H: drop the task, AND clear any other task's connectionOverrides
@@ -666,6 +724,8 @@ export default function FlowEditor({ flow, onBack, onSave }) {
           x={contextMenu.x}
           y={contextMenu.y}
           roles={liveFlow.roles || []}
+          allTasks={liveFlow.tasks}
+          displayLabels={displayLabels}
           onUpdate={(updated) => {
             updateTask(contextMenu.task.id, updated);
             // Reflect the edit in the menu's local task copy too.
@@ -673,6 +733,8 @@ export default function FlowEditor({ flow, onBack, onSave }) {
           }}
           onAddBefore={addTaskBefore}
           onAddAfter={addTaskAfter}
+          onAddConnection={addConnection}
+          onAddGateway={insertGatewayAfter}
           onDelete={removeTask}
           onClose={() => setContextMenu(null)}
         />
