@@ -12,6 +12,7 @@ import DiagramRenderer from './DiagramRenderer.jsx';
 import ConnectionSection from './ConnectionSection.jsx';
 import FlowTable from './FlowTable.jsx';
 import BackToTop from './BackToTop.jsx';
+import RightDrawer from './RightDrawer.jsx';
 import { useDragReorder, DragHandle } from './dragReorder.jsx';
 import {
   CONNECTION_TYPES, SHAPE_TYPES, CONN_BADGE, CONN_ROW_BG,
@@ -243,7 +244,10 @@ export default function FlowEditor({ flow, onBack, onSave }) {
     }),
   }));
   const [hasChanges, setHasChanges] = useState(false);
-  const [activeTab, setActiveTab] = useState('flow'); // 'flow' | 'table' | 'roles'
+  // Drawer state: tabs inside drawer are 'flow' (流程) / 'roles' (角色).
+  // Excel table moves out of tabs entirely → always shown below diagram.
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerTab, setDrawerTab] = useState('flow'); // 'flow' | 'roles'
   const [logoReaction, setLogoReaction] = useState(null); // 'wave' | null
     const [saveModal, setSaveModal] = useState(null); // { type: 'blocking'|'warning', messages: [] }
   // PR I: confirm-before-clear modal for "重設所有手動端點" global reset.
@@ -479,6 +483,15 @@ export default function FlowEditor({ flow, onBack, onSave }) {
             </svg>
           </button>
           <button
+            onClick={() => setDrawerOpen(true)}
+            title="開啟編輯面板"
+            className="px-3 py-1.5 text-sm rounded border border-white border-opacity-40 text-white hover:bg-white hover:bg-opacity-10 flex items-center gap-1">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
+            </svg>
+            編輯
+          </button>
+          <button
             onClick={handleSave}
             className="px-4 py-1.5 text-sm rounded font-medium transition-colors"
             style={{ background: hasChanges ? '#7AB5DD' : '#6B7280', color: hasChanges ? '#1E4677' : 'white' }}>
@@ -494,97 +507,83 @@ export default function FlowEditor({ flow, onBack, onSave }) {
           onChangeTarget={changeConnectionTarget}
           onResetOverride={resetConnectionOverride} />
 
-        {/* Tabs */}
-        <div className="mt-6 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          {/* Tab bar */}
-          <div className="flex border-b border-gray-200">
-            {[
-              { key: 'flow',  label: '設定流程' },
-              { key: 'table', label: '詳細 Excel 清單' },
-              { key: 'roles', label: '設定泳道角色' },
-            ].map(tab => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === tab.key
-                    ? 'border-blue-600 text-blue-700 bg-blue-50'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                }`}>
-                {tab.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Tab: 設定流程 */}
-          {activeTab === 'flow' && (
-            <div className="p-4">
-              <p className="text-xs text-gray-400 mb-3">▼ 點任務右側箭頭可展開說明、輸入、產出欄位</p>
-              <div className="flex flex-col gap-2">
-                {liveFlow.tasks.map((task, i) => (
-                  <TaskCard
-                    key={task.id}
-                    task={task}
-                    roles={liveFlow.roles || []}
-                    allTasks={liveFlow.tasks}
-                    displayLabels={displayLabels}
-                    onUpdate={updated => updateTask(task.id, updated)}
-                    onRemove={() => removeTask(task.id)}
-                    canRemove={liveFlow.tasks.length > 1}
-                    dragHandlers={rowProps(i)}
-                    isDragging={dragIdx === i}
-                    isOver={overIdx === i && dragIdx !== i}
-                  />
-                ))}
-              </div>
-              <button onClick={addTask}
-                className="mt-3 w-full py-2 text-sm border border-dashed border-blue-400 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors">
-                + 新增任務
-              </button>
-            </div>
-          )}
-
-          {/* Tab: 詳細 Excel 清單 */}
-          {activeTab === 'table' && (
-            <div className="p-4">
-              <FlowTable flow={liveFlow} onSave={handleTableSave} />
-            </div>
-          )}
-
-          {/* Tab: 設定泳道角色 */}
-          {activeTab === 'roles' && (
-            <div className="p-4">
-              <p className="text-sm text-gray-500 mb-3">設定流程中的參與角色，變更後請點右上角「儲存」</p>
-              <div className="flex flex-col gap-2">
-                {(liveFlow.roles || []).map((role, i) => (
-                  <div key={role.id} className="flex items-center gap-2">
-                    <span className="text-xs text-gray-400 w-5 flex-shrink-0">#{i + 1}</span>
-                    <input type="text" placeholder="角色名稱" value={role.name}
-                      onChange={e => patch({ roles: liveFlow.roles.map(r => r.id === role.id ? { ...r, name: e.target.value } : r) })}
-                      className="flex-1 px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-400" />
-                    <select value={role.type}
-                      onChange={e => patch({ roles: liveFlow.roles.map(r => r.id === role.id ? { ...r, type: e.target.value } : r) })}
-                      className="px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none"
-                      style={{ background: role.type === 'external' ? '#009900' : '#0066CC', color: 'white' }}>
-                      <option value="internal">內部角色</option>
-                      <option value="external">外部角色</option>
-                    </select>
-                    <button
-                      onClick={() => { if (liveFlow.roles.length > 1) patch({ roles: liveFlow.roles.filter(r => r.id !== role.id) }); }}
-                      disabled={liveFlow.roles.length <= 1}
-                      className="text-red-400 hover:text-red-600 disabled:opacity-20 text-lg leading-none">✕</button>
-                  </div>
-                ))}
-              </div>
-              <button
-                onClick={() => patch({ roles: [...(liveFlow.roles || []), makeRole()] })}
-                className="mt-3 w-full py-2 text-sm border border-dashed border-blue-400 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors">
-                + 新增角色
-              </button>
-            </div>
-          )}
+        {/* Excel table — always visible (used to be a tab) */}
+        <div className="mt-6 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden p-4">
+          <FlowTable flow={liveFlow} onSave={handleTableSave} />
         </div>
       </main>
+
+      {/* Drawer — hosts 設定流程 / 設定泳道角色 tabs */}
+      <RightDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        title="編輯流程"
+        tabs={[
+          { key: 'flow',  label: '設定流程' },
+          { key: 'roles', label: '設定泳道角色' },
+        ]}
+        activeTab={drawerTab}
+        onTabChange={setDrawerTab}
+      >
+        {drawerTab === 'flow' && (
+          <div>
+            <p className="text-xs text-gray-400 mb-3">▼ 點任務右側箭頭可展開說明、輸入、產出欄位</p>
+            <div className="flex flex-col gap-2">
+              {liveFlow.tasks.map((task, i) => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  roles={liveFlow.roles || []}
+                  allTasks={liveFlow.tasks}
+                  displayLabels={displayLabels}
+                  onUpdate={updated => updateTask(task.id, updated)}
+                  onRemove={() => removeTask(task.id)}
+                  canRemove={liveFlow.tasks.length > 1}
+                  dragHandlers={rowProps(i)}
+                  isDragging={dragIdx === i}
+                  isOver={overIdx === i && dragIdx !== i}
+                />
+              ))}
+            </div>
+            <button onClick={addTask}
+              className="mt-3 w-full py-2 text-sm border border-dashed border-blue-400 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors">
+              + 新增任務
+            </button>
+          </div>
+        )}
+
+        {drawerTab === 'roles' && (
+          <div>
+            <p className="text-sm text-gray-500 mb-3">設定流程中的參與角色，變更後請點右上角「儲存」</p>
+            <div className="flex flex-col gap-2">
+              {(liveFlow.roles || []).map((role, i) => (
+                <div key={role.id} className="flex items-center gap-2">
+                  <span className="text-xs text-gray-400 w-5 flex-shrink-0">#{i + 1}</span>
+                  <input type="text" placeholder="角色名稱" value={role.name}
+                    onChange={e => patch({ roles: liveFlow.roles.map(r => r.id === role.id ? { ...r, name: e.target.value } : r) })}
+                    className="flex-1 px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-400" />
+                  <select value={role.type}
+                    onChange={e => patch({ roles: liveFlow.roles.map(r => r.id === role.id ? { ...r, type: e.target.value } : r) })}
+                    className="px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none"
+                    style={{ background: role.type === 'external' ? '#009900' : '#0066CC', color: 'white' }}>
+                    <option value="internal">內部角色</option>
+                    <option value="external">外部角色</option>
+                  </select>
+                  <button
+                    onClick={() => { if (liveFlow.roles.length > 1) patch({ roles: liveFlow.roles.filter(r => r.id !== role.id) }); }}
+                    disabled={liveFlow.roles.length <= 1}
+                    className="text-red-400 hover:text-red-600 disabled:opacity-20 text-lg leading-none">✕</button>
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={() => patch({ roles: [...(liveFlow.roles || []), makeRole()] })}
+              className="mt-3 w-full py-2 text-sm border border-dashed border-blue-400 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors">
+              + 新增角色
+            </button>
+          </div>
+        )}
+      </RightDrawer>
 
             <BackToTop />
 
