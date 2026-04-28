@@ -266,7 +266,64 @@ style={{ background: role.type === 'external' ? '#5B8AC9' : '#2A5598', color: 'w
 | Logo 刪除暗下 | `logo-dim` |
 | 下載進度 spinner | `animate-spin inline-block w-4 h-4 border-2 border-yellow-500 border-t-transparent rounded-full` |
 
-## 10. Checklist（做完 UI 變更自我審）
+## 10. 浮動元件 Pattern（ContextMenu / RightDrawer / DropLine）
+
+新增類似的 popover / drawer / drag-indicator 時複用這些模板，視覺與行為才能一致。
+
+### 10.1 Right-side drawer（編輯面板滑出）
+
+`<RightDrawer>` 範例位於 `src/components/RightDrawer.jsx`。Pattern：
+
+| 屬性 | 值 |
+|---|---|
+| 定位 | `fixed top-0 right-0 h-screen z-40` |
+| 寬度 | `w-full sm:w-[520px] md:w-[560px]`（行動全寬、桌面 520-560px）|
+| 開關動畫 | `transition-transform duration-300 ease-in-out` + `${open ? 'translate-x-0' : 'translate-x-full'}` |
+| Backdrop | 只在 sm 以下才顯示（`sm:hidden`）半透明黑底 |
+| 關閉觸發 | ✕ button + Esc + backdrop click |
+| Header | `bg-gray-50 border-b border-gray-200 px-4 py-3 flex items-center justify-between` |
+| Tab bar（可選）| `flex border-b border-gray-200`，active = `border-blue-600 text-blue-700 bg-blue-50` |
+| Content | `flex-1 overflow-y-auto p-4` |
+
+### 10.2 ContextMenu（點元件彈出選單）
+
+`<ContextMenu>` 範例位於 `src/components/ContextMenu.jsx`。Pattern：
+
+| 屬性 | 值 |
+|---|---|
+| 定位 | `fixed z-50` + `style={{ left, top }}`（依 cursor / 元件 rect 計算）|
+| 寬度 | 260-300px（不要超過 320，避免行動裝置出框）|
+| 邊界 reposition | useEffect 算 `getBoundingClientRect()`，超出視窗自動 inset 8px |
+| Backdrop | **無**（直接 click outside via document listener）|
+| 關閉觸發 | ✕ button + Esc + 點 menu 外面（`document.addEventListener('mousedown')`，**defer setTimeout 0** 避免 opening click 立刻觸發）|
+| Header | 跟 RightDrawer 同 pattern（`bg-gray-50` + ✕ button）|
+| Inline edit fields | `<label className="flex flex-col gap-1">` + `<span className="text-xs text-gray-500">` 標題 + input/select/textarea |
+| Action buttons（垂直堆疊）| `w-full px-3 py-2 text-left text-xs hover:bg-blue-50 hover:text-blue-700 flex items-center gap-2` |
+| Sub-form expand | accordion 模式（同一 button 點兩次收回），active 時 button 用 `bg-blue-50 text-blue-700`，▾/▴ 在右側 |
+| Sub-form 內容 | `bg-gray-50 border-t border-b border-gray-100 px-3 py-2 flex flex-col gap-2`，底部「取消 / 確認」按鈕對齊右 |
+| 危險 button | `text-red-600 hover:bg-red-50`（刪除類）|
+
+### 10.3 拖曳 Drop indicator（DropLine + 兩相鄰 row 邊框）
+
+`useDragReorder` hook 已 expose `dropAfter`（依 mouseY 跟 row 中線比較）。Pattern：
+
+| 視覺元素 | 樣式 |
+|---|---|
+| 上面 row 邊框（drop 在這 row 之下）| `border-b-2 border-blue-500` |
+| 下面 row 邊框（drop 在這 row 之上）| `border-t-2 border-blue-500` |
+| **中間插入的 DropLine**（最明顯）| `<div className="relative h-0 my-[-4px]" aria-hidden="true">` 包 `<div className="absolute inset-x-2 -translate-y-1/2 h-1.5 bg-blue-500 rounded-full shadow-md shadow-blue-300" />` |
+| 拖曳中 row 自身 | `opacity-40 scale-95` |
+
+**算插入位置（slot）**：
+```js
+const dropTargetSlot = (dragIdx === null || overIdx === null) ? null
+  : (dropAfter ? overIdx + 1 : overIdx);
+const adjacentTopIdx    = dropTargetSlot - 1;
+const adjacentBottomIdx = dropTargetSlot;
+// 不在 dragIdx 自己 / 自己旁邊（no-op drop）顯示線
+```
+
+## 11. Checklist（做完 UI 變更自我審）
 
 - [ ] 按鈕用對應 pattern（primary / secondary / header / danger / outline）
 - [ ] Banner 用對應色（red / sky / amber / yellow）
