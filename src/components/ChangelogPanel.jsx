@@ -9,7 +9,6 @@ import { useState } from 'react';
  */
 
 const CHANGELOG = [
-  const CHANGELOG = [
   {
     date: '2026-04-28',
     title: '閘道前綴補齊（Q：編輯器路徑也補）+ tooltip 新增閘道時可同步編輯條件標籤（T）',
@@ -23,8 +22,6 @@ const CHANGELOG = [
     ],
   },
   {
-    date: '2026-04-28',
-    title: '流程圖字級 +40% 放大（會議室遠看）+ 編輯頁 +1 級 + 標題 em-dash 對稱 + 七視圖檢核升格',{
     date: '2026-04-28',
     title: '流程圖字級 +40% 放大（會議室遠看）+ 編輯頁 +1 級 + 標題 em-dash 對稱 + 七視圖檢核升格',
     items: [
