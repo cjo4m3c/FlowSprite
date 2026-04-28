@@ -6,6 +6,17 @@
 export default [
   {
     date: '2026-04-28',
+    title: '重構：拆解 FlowEditor.jsx（43KB → 8 個 ≤13KB 檔案）',
+    items: [
+      '**承接前 PR**：layout.js + DiagramRenderer.jsx 拆完後第三大檔換成 `FlowEditor.jsx` 43KB / 939 行，同樣超過 MCP 推送臨界值（15KB）。',
+      '**解法**：拆成 7 個專職模組放在 `src/components/FlowEditor/`，每檔 < 15KB。對外 API 不變（`src/components/FlowEditor.jsx` 變成 thin shim re-export `default`）。',
+      '**新檔結構**：`validateFlow.js`（儲存前 blocking + warning 兩層檢核）、`TaskCard.jsx`（drawer 內單一任務行 UI）、`useFlowActions.js`（`addTask` / `addTaskAfter` / `insertGatewayAfter` / `addL3ActivityAfter` / `removeTask` / `updateConnectionOverride` / `changeConnectionTarget` / `resetConnectionOverride` / `resetAllOverrides` 等 12 個圖形變更函式打包成 hook）、`Header.jsx`（頂部 bar：返回 / logo / 編號 / 編輯 / 儲存 / 釘選 / 重設端點）、`DrawerContent.jsx`（drawer flow tab + roles tab + DropLine 拖曳指示）、`SaveModals.jsx`（儲存前 warning 跟全部重設端點兩個 modal）、`index.jsx`（orchestrator state + render）。',
+      '**未動到**：`App.jsx` 一行未改（仍 `import FlowEditor from \'./components/FlowEditor.jsx\'`，由 shim 透傳）；所有 useState / useMemo / useEffect / useDragReorder hook 順序與依賴 array 完全保留，避免 React 規則破壞。',
+      '**驗證**：`npm run build` 通過（107 modules transformed，原本 100）；validateFlow / drag-reorder / context menu 邏輯逐行保留。',
+    ],
+  },
+  {
+    date: '2026-04-28',
     title: '重構：拆解 DiagramRenderer.jsx（44KB → 11 個 ≤13KB 檔案）',
     items: [
       '**承接前 PR**：layout.js 拆完後第二大檔換成 `DiagramRenderer.jsx` 44KB。同樣超過 MCP 推送臨界值（15KB），每次改流程圖就 timeout。',
