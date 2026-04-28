@@ -6,6 +6,17 @@
 export default [
   {
     date: '2026-04-28',
+    title: '重構：拆解 DiagramRenderer.jsx（44KB → 11 個 ≤13KB 檔案）',
+    items: [
+      '**承接前 PR**：layout.js 拆完後第二大檔換成 `DiagramRenderer.jsx` 44KB。同樣超過 MCP 推送臨界值（15KB），每次改流程圖就 timeout。',
+      '**解法**：把 1023 行的單檔 React 元件拆成 11 個專職模組放在 `src/components/DiagramRenderer/`，每檔 < 15KB。對外 API 不變（`src/components/DiagramRenderer.jsx` 變成 thin shim re-export `default`）。',
+      '**新檔結構**：`text.jsx`（wrapText / SvgLabel / L4Number / EventLabel）、`shapes.jsx`（5 種任務形狀）、`arrows.jsx`（ArrowMarkers / ConnectionArrow / EndpointHandle）、`legend.jsx`（圖例）、`Toolbar.jsx`（匯出按鈕 + 編輯提示 banner）、`StickyHeader.jsx`（凍結角色欄）、`overlays.jsx`（DropTargetHighlight / OverrideIndicators / DragPreview / HoverTooltip）、`TasksLayer.jsx`（任務 hover/click 圖層）、`useDragEndpoint.js`（端點拖曳 state machine 自訂 hook）、`dragHelpers.js`（screenToSvg / nearestSide / findTaskAtPoint 純函式）、`index.jsx`（orchestrator）。',
+      '**未動到**：`FlowEditor.jsx` / `Dashboard.jsx` 兩個 importer 一行未改（仍 `import DiagramRenderer from \'./DiagramRenderer.jsx\'`，由 shim 透傳）。',
+      '**驗證**：`npm run build` 通過（100 modules transformed，原本 89）；既有 hover tooltip / drag endpoint / drop-target highlight / override indicator / sticky header / 匯出 PNG/drawio 邏輯逐行保留。',
+    ],
+  },
+  {
+    date: '2026-04-28',
     title: '重構：拆解 layout.js（58KB → 11 個 ≤15KB 檔案）',
     items: [
       '**痛點**：使用者：「常常因為檔案大推不上去，很長 timeout 中斷執行」。`src/diagram/layout.js` 58KB 超過 MCP 推送臨界值（15KB），每次改 routing 都得手動貼。',
