@@ -11,6 +11,22 @@ import { useState } from 'react';
 const CHANGELOG = [
   {
     date: '2026-04-27',
+    title: '閘道種類切換 + FlowTable 同步修 + 四視圖一致性 invariant + skill 整理',
+    items: [
+      '**閘道種類切換**（使用者：「在既有的閘道上可以點選後在編輯元件 tooltip 中，可以換成其他種類的閘道」）：`ContextMenu` 加「換閘道種類」sub-form（task.type === "gateway" 時才顯示），radio 三選一 XOR / AND / OR，確認後改 `gatewayType` + 對應 `connectionType`（fork↔fork or merge↔merge），保留現有 conditions / 連線目標',
+      '**閘道任務名稱前綴**（使用者：「新增閘道元件時，下方 excel 的「L4 任務名稱」欄位，自動依照格式 [OO閘道] 任務名稱 填入」）：`taskDefs.js` 加 `GATEWAY_LABELS / gatewayPrefix() / applyGatewayPrefix()` 三個 helper（單一來源）；`FlowEditor.insertGatewayAfter` 新閘道 name 預填 `[排他閘道] ` / `[並行閘道] ` / `[包容閘道] `；`ContextMenu` 切換閘道種類時自動 strip 舊 prefix 加新 prefix，保留使用者填的後段',
+      '**修 FlowTable 同步 bug**（使用者：「下方 excel 的欄位也要在同樣順序的地方，同步新增一列」）：root cause = `FlowTable.jsx:60` `useEffect` 只 watch `flow.id`，新增任務 / 拖曳重排時 `flow.id` 不變、`flow.tasks` 變了 → 內部 `tasks` state 不重新 sync。修法：deps 加 `flow.tasks`',
+      '**四視圖一致性 invariant**：使用者明確要求「每次更新時檢查」流程圖 / drawer / FlowTable / 下載資料四者同步。寫進 `.claude/skills/doc-audit.md` §5 + `.claude/skills/ship-feature.md` §3.5 為硬性檢核點，未來操作 task 後必跑',
+      '**Skill 整理**：',
+      '　• 新增 `/preview-branch` skill — 高風險 / 視覺敏感改動先在 `https://cjo4m3c.github.io/FlowSprite/preview-<slug>/` 部署預覽；含 deploy-preview.yml 模板 + GitHub Pages environment 設定步驟 + merge 後刪 workflow 的 cleanup 流程',
+      '　• 新增 `/wrap-pr` skill — 累積多 commits 的整理 SOP（掃 redundant → doc-audit → 評估順帶技術債 → 一筆 consolidated changelog → ship）',
+      '　• 更新 `/doc-audit` — 移除 ROUTING / CORRIDOR（已搬到 HANDOVER）；加 `EDITABLE_ACTIONS` / `FORBIDDEN_RULES`；加 §5 四視圖 invariant 檢核；VALIDATION 從 Wizard.jsx 改成 FlowEditor.jsx（修舊錯）',
+      '　• 更新 `/ui-rules` §10 — 加 RightDrawer / ContextMenu / DropLine 三種浮動元件 pattern（給未來新增類似元件 reuse）',
+      '　• 更新 `/ship-feature` §3 對照表 — 新增/刪除元件需同步 README + HANDOVER；新增 skill 需同步清單；§3.5 加四視圖 invariant 強制檢核',
+    ],
+  },
+  {
+    date: '2026-04-27',
     title: '編輯體驗大改造：drawer + ContextMenu + hover tooltip + 拖曳線條 + 文件整理',
     items: [
       '**版面重構**：流程圖下方原 3 tab（設流程 / Excel 清單 / 設角色）改成「流程圖 + Excel 表格直顯」+ 右側 drawer（點 ✏️ 編輯按鈕滑出，內含「設定流程」「設定泳道角色」兩個 tab）。Excel 表格不再藏在 tab 裡',
