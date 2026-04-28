@@ -28,14 +28,27 @@ description: Complete a feature branch and deploy to production. Runs the featur
 
 本次 feature 動了哪些檔案？根據以下對照表決定要不要更新 CLAUDE.md：
 
-| 變動類型 | 需更新的 CLAUDE.md 章節 |
+| 變動類型 | 需更新的章節 |
 |---|---|
-| 改編號格式 / regex | 規則 3（單一來源：`src/utils/taskDefs.js`） |
-| 新增/刪除檔案 | 規則 9（孤兒清單） |
-| 改 Git push / 工作流程 | 規則 1 / 2 |
-| 其他核心業務規則 | 規則 3–6 對應章節 |
+| 改編號格式 / regex | `CLAUDE.md` 規則 3（單一來源：`src/utils/taskDefs.js`）|
+| 新增/刪除檔案 | `CLAUDE.md` 規則 9（孤兒清單） |
+| 改 Git push / 工作流程 | `CLAUDE.md` 規則 1 / 2 |
+| **新增/刪除 元件**（`src/components/*.jsx`）| 同步更新 `README.md` + `HANDOVER.md` 元件清單樹 |
+| **新增 / 刪除 skill**（`.claude/skills/*.md`）| 同步更新 `README.md` + `HANDOVER.md` skill 清單 |
+| **新增浮動 UI**（drawer / popup / tooltip）| 同步更新 `.claude/skills/ui-rules.md` §10 浮動元件 pattern |
+| 其他核心業務規則 | `CLAUDE.md` 規則 3–6 對應章節 |
 
-若 CLAUDE.md 要改，先改再進下一步。
+若任何文件要改，先改再進下一步。
+
+### 3.5 四視圖一致性檢核（每次新增 / 編輯 / 刪除任務的 PR 必跑）
+
+操作完成後，**至少在本地 `npm run dev` 同時驗證**：
+- 流程圖（DiagramRenderer）任務數 / 編號 / 名稱
+- 右側 drawer 設定流程 tab 任務 list
+- 下方 Excel 表格（FlowTable）行數 / 編號 / 名稱
+- 下載 Excel 第三欄 L4 編號 + 第四欄任務名稱
+
+四者必須 100% 一致。詳見 `.claude/skills/doc-audit.md` §5。
 
 ### 4. 建 PR
 

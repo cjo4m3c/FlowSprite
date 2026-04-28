@@ -19,7 +19,7 @@ import {
   CONNECTION_TYPES, SHAPE_TYPES, CONN_BADGE, CONN_ROW_BG,
   makeTask, makeRole,
   normalizeTask, applyConnectionType, applySequentialDefaults,
-  computeDisplayLabels,
+  computeDisplayLabels, applyGatewayPrefix,
 } from '../utils/taskDefs.js';
 import { generateId } from '../utils/storage.js';
 import { detectOverrideViolations } from '../diagram/violations.js';
@@ -437,6 +437,9 @@ export default function FlowEditor({ flow, onBack, onSave }) {
       gatewayType,
       connectionType: ctMap[gatewayType] || 'conditional-branch',
       roleId: anchor.roleId || '',
+      // Pre-fill name with "[XX閘道] " prefix so the FlowTable / Excel rows
+      // are immediately readable. User extends after the space.
+      name: applyGatewayPrefix('', gatewayType),
       conditions: [
         { id: generateId(), label: '', nextTaskId: targetId1 || '' },
         { id: generateId(), label: '', nextTaskId: targetId2 || '' },
