@@ -189,28 +189,38 @@ items: ['...', '...'],
 
 ## 當前待辦狀態
 
-（由 TodoWrite 即時管理；此處保留跨 session 需要記得的 backlog，來源：2026-04-28 交接 §5）
+（由 TodoWrite 即時管理；此處保留跨 session 需要記得的 backlog，來源：2026-04-28 交接 §5 + 同日 K/L PR 收尾新增）
 
-### 立即可動（測試環境優先）
+### 立即可動 / Bug
 
-- **B. layout 同欄對齊** — fork 兩分支步數不等時，短分支末段對齊到長分支同欄。推薦解法 A（`alignForkBranches` post-pass），先開 `claude/preview-layout-same-column` 預覽分支驗證。動手前須跟使用者確認 §10.6 四個問題（解法選 A？情境 4 對齊？情境 6 衝突？reference 圖？）
+- **B. layout 同欄對齊** — fork 兩分支步數不等時，短分支末段對齊到長分支同欄；含使用者要求的「包容、並行閘道後方任務對齊」。推薦解法 A（`alignForkBranches` post-pass），先開 `claude/preview-layout-same-column` 預覽分支驗證。動手前須跟使用者確認 §10.6 四個問題
+- **P. 全頁儲存連動 BUG**（使用者：「儲存要整頁一起存，不能下方 excel 編輯後 上方的調整都不見了，應該要是不管在哪裡編輯後所有內容都要連動修正（編輯器、流程圖、下方表格）」）— FlowEditor / DiagramRenderer 互動 / FlowTable 三處互改後內容要連動，目前 FlowTable 編輯後上方未儲存的調整會被覆蓋。需把 hasChanges + source-of-truth 整合到頂層 state
+- **S. tooltip 新增連線無法選 L3 BUG**（使用者：「現在 tooltip 新增連線無法選到圖上的 L3」）— `ContextMenu` 連線下拉漏掉 L3 activity 任務；`ConnectionSection.jsx:11` filter 已對 gateway 例外，需同樣對 L3 activity 例外
 
 ### 規格已明確、可排程
 
+- **Q. 新增閘道時自動補閘道名稱到任務說明**（使用者：「新增閘道時，任務說明自動補上閘道名稱」）— 已有 `applyGatewayPrefix` 補 `task.name`；需同步補 `task.description`（如「[並行閘道] 用於同時處理多個分支」自動填入）
+- **R. 新增 L3 流程顯示編號規則**（使用者：「新增 L3 流程的時候，要直接顯示 L3 編號，不可以有 L4 編號出現」）— Wizard 新增頁應只顯示 L3 編號，目前混入 L4 編號預覽要去掉
+- **T. 新增閘道時可同步編輯分支條件**（使用者：「新增閘道時，要可以同步編輯分支條件（現在不行）」）— `ContextMenu` 新增閘道 sub-form 加 condition 編輯欄位（目前只能新增閘道殼，再去主編輯區改條件）
+- **U. 插入閘道操作邏輯拉齊**（使用者：「拉齊插入閘道的操作邏輯（現在圖上是插入閘道、編輯器是序列規則）」）— `DiagramRenderer` ContextMenu「插入閘道」與 `FlowEditor` 編輯器內的插入流程不一致，要統一
+- **V. 儲存事件閃亮提醒**（使用者：「新增儲存事件閃亮提醒」）— 儲存按鈕被按下後加 logo 閃光 / 按鈕短暫變綠等視覺回饋（取代原 J「儲存提醒優化」的待選方向）
 - **C. Phase 3.5 gateway obstacle avoidance**（`src/diagram/layout.js`）— 閘道作為跨列 forward obstacle 時走 vertical-detour
-- **E. Excel Tab 內嵌編輯**（`FlowTable.jsx`）— textarea + auto-resize
-- **K. 標題 em-dash 間距修** — 「L3 活動編號 — L3 活動名稱」兩側間距太擠
-- **L. 編輯頁字級放大一級**（`FlowEditor.jsx` 全頁）— 保持 `ui-rules` §8 字級表相對比例
-- **M-1. 頁首四顆按鈕風格統一** — 儲存 / 編輯流程 / 重設手動端點 / ★
+- **E. Excel Tab 內嵌編輯**（`FlowTable.jsx`）— textarea + auto-resize（與 P 一起做最順）
+- **M-1. 頁首四顆按鈕風格統一**（使用者：「拉齊編輯頁右上按鈕規格」）— 儲存 / 編輯流程 / 重設手動端點 / ★
 - **M-2. 流程圖頂部下載按鈕統一 + 加 Excel 鍵** — PNG / drawio / Excel 三鍵，照 `ui-rules` §2.5 三色藍
 - **N. 泳道角色拖曳視覺提示** — 複用 `useDragReorder` 的 `dropAfter` + DropLine pattern
 
 ### 規格待確認、不能直接動手
 
-- **F. Excel 部分匯入** — 單一欄位 / 部分行覆蓋邏輯
-- **G. 匯出圖等比寬度** — PNG 匯出規格
-- **J. 儲存提醒優化** — 四種方向待使用者選一
+- **F. Excel 部分匯入**（使用者：「只匯入＋覆蓋 excel 部分內容欄位、或自動略過部分欄位」）— 單一欄位 / 部分行覆蓋邏輯
+- **G. 匯出圖等比寬度**（使用者：「匯出的圖檔要符合 ISO 文件適用寬度」）— PNG 匯出規格 / ISO A4 等比
 
-### Nice-to-have
+### Nice-to-have / 有空再修
 
-- **H. 邊側批量下載缺檔**
+- **H. 邊側批量下載缺檔**（使用者：「批量下載數量太多時比較後面的編號會漏檔案 → 目前排解只有 edge 瀏覽器有，晚點再修」）
+
+### 已完成（本 PR 出清，2026-04-28）
+
+- **K. 標題 em-dash 間距修** — DONE，`DiagramRenderer.jsx:751` 改成 `　—　`（兩側全形）
+- **L. 編輯頁字級放大一級** — DONE，擴大為流程圖 +40% + 編輯頁 Tailwind +1 step
+- **J. 儲存提醒優化（規格不明）** — 由 V 取代
