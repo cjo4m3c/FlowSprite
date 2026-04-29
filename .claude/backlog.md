@@ -27,7 +27,7 @@
 ## Nice-to-have / 有空再修
 
 - **H. 邊側批量下載缺檔**（使用者：「批量下載數量太多時比較後面的編號會漏檔案 → 目前排解只有 edge 瀏覽器有，晚點再修」）
-- **後續批次拆檔（PR-4 size check 命中）**：`HelpPanel.jsx` 26KB / `Dashboard.jsx` 26KB / `excelImport.js` 23KB / `ContextMenu.jsx` 19KB / `taskDefs.js` 17KB / 凍結 `c13.js` 拆成 c13a + c13b（17KB）
+- **後續批次拆檔（PR-4 size check 命中）**：`HelpPanel.jsx` 26KB / `ContextMenu.jsx` 19KB / 凍結 `c13.js` 拆成 c13a + c13b（17KB）。已解：`Dashboard.jsx`（PR-8 拆 7 檔）/ `taskDefs.js`（PR-6 抽 selector）/ `excelImport.js`（PR-5/6 各砍 ~2KB）
 
 ## Phase 2（model 共用層抽出）
 
@@ -46,3 +46,4 @@
 - **PR-1**：拆 `src/diagram/layout.js` 58KB → 11 個 ≤15KB 檔案
 - **PR-2**：拆 `src/components/DiagramRenderer.jsx` 44KB → 11 個 ≤13KB 檔案
 - **PR-3**：拆 `src/components/FlowEditor.jsx` 43KB → 8 個 ≤13KB 檔案
+- **PR-8**：拆 `src/components/Dashboard.jsx` 26KB → 7 個 ≤12.4KB 檔案；同 PR 校正 CLAUDE.md §2 push 規則為 API-aware 矩陣
