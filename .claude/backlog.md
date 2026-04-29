@@ -6,7 +6,7 @@
 
 ## 立即可動 / Bug
 
-- **P. 全頁儲存連動 BUG**（使用者：「儲存要整頁一起存，不能下方 excel 編輯後 上方的調整都不見了，應該要是不管在哪裡編輯後所有內容都要連動修正（編輯器、流程圖、下方表格）」）— FlowEditor / DiagramRenderer 互動 / FlowTable 三處互改後內容要連動，目前 FlowTable 編輯後上方未儲存的調整會被覆蓋。需把 hasChanges + source-of-truth 整合到頂層 state
+（無）
 
 ## 規格已明確、可排程
 
@@ -14,9 +14,7 @@
 - **U. 插入閘道操作邏輯拉齊**（使用者：「拉齊插入閘道的操作邏輯（現在圖上是插入閘道、編輯器是序列規則）」）— `DiagramRenderer` ContextMenu「插入閘道」與 `FlowEditor` 編輯器內的插入流程不一致，要統一
 - **V. 儲存事件閃亮提醒**（使用者：「新增儲存事件閃亮亮動態提醒」）— 儲存按鈕被按下後加 logo 閃光 / 按鈕短暫變綠等視覺回饋（取代原 J「儲存提醒優化」的待選方向）
 - **C. Phase 3.5 gateway obstacle avoidance**（`src/diagram/layout/`）— 閘道作為跨列 forward obstacle 時走 vertical-detour
-- **E. Excel Tab 內嵌編輯**（使用者：「優化 excel tab 可編輯性」）— `FlowTable.jsx` textarea + auto-resize（與 P 一起做最順）
 - **M-1. 頁首四顆按鈕風格統一**（使用者：「拉齊編輯頁右上按鈕規格」）— 儲存 / 編輯流程 / 重設手動端點 / ★
-- **M-2. 流程圖頂部下載按鈕統一 + 加 Excel 鍵** — PNG / drawio / Excel 三鍵，照 `ui-rules` §2.5 三色藍
 - **N. 泳道角色拖曳視覺提示** — 複用 `useDragReorder` 的 `dropAfter` + DropLine pattern
 - **Y. tooltip 上編輯既有閘道分流條件**（使用者：「各種閘道：要可以在 tooltip 上編輯分流點」）— T 已做新增閘道時的條件標籤輸入；本項補**既有閘道**的 inline 編輯。動到 `ContextMenu`：對既有閘道展開 sub-form 加 label inputs，state 寫回 `task.connections[].label`
 - **Z. 閘道 fork + merge 自動填入任務關聯說明**（使用者：「閘道的自動填入說明，新增填入任務關聯說明欄的『條件分支、並行分支、包容分支』」+「條件合併、包容合併、並行合併也要出現在任務關聯說明，看能不能自動補」）— `src/model/connectionFormat.js` `formatConnection` 已能產生對應字串，但**任務關聯說明欄**（task.description / task.notes）目前不自動寫入；要在 `taskDefs.applyConnectionType` 或 save flow 時 sync。注意：使用者手動編輯過的 description 不能被覆蓋
@@ -43,6 +41,7 @@
 
 ## 已完成（2026-04-28 至 2026-04-29 出清）
 
+- **P. 全頁儲存連動 BUG / E. Excel Tab 內嵌編輯 / M-2. 流程圖頂部下載統一** — DONE 三條一起。FlowTable 轉受控元件（移除本地 tasks/hasChanges state，cell 改 textarea + onBlur 寫回，對應 onUpdateTask）；流程圖 / Drawer / FlowTable 任一處編輯即時同步到 liveFlow，按頂部「儲存」一次存全部；Drawer 確認無獨立儲存按鈕；FlowEditor 抽 `saveAndValidate(onSuccess?)`，DiagramRenderer 收 `onBeforeExport` prop，PNG / drawio / Excel 三個 export 都先 validate 通過才存+下載；4 個關鍵欄位（任務名稱/重點說明/重要輸入/關聯說明）寬度 `min-w-[260px]`，表頭容許 2 行（whitespace-nowrap 移除）。Excel 按鈕用藍系第 3 階 #1A3D69。
 - **X. 字級放大後版面修補** — DONE，框體縮減（NODE 180×72→156×60 / COL_W 224→184 / LANE_H 196→152 / LANE_HEADER_W 180→108）+ 字級三層化（L1 16/18/22 / L2 14 / L3 13，L4 編號從 13 升 L2 14、tooltip 從 12 升 13）+ 行距拉開（SvgLabel 22→24 / 角色 22→26 / Event name 18→20 / desc 17→19 / 閘道下標 20→22）+ wrap maxChars 連動收緊。跨場景縮放交給瀏覽器 Ctrl+/Ctrl-，不自製 slider。
 - **K. 標題 em-dash 間距修** — DONE，DiagramRenderer 改成 `　—　`（兩側全形）
 - **L. 編輯頁字級放大一級** — DONE，流程圖 +40% + 編輯頁 Tailwind +1 step（後續修補列為 X）

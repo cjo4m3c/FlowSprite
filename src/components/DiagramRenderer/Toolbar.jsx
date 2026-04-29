@@ -4,7 +4,7 @@
  *   - PNG / .drawio export buttons
  *   - Edit-hint banner (when editable) with selected-connection helpers
  */
-export function DiagramToolbar({ flow, showExport, onExport, onExportDrawio,
+export function DiagramToolbar({ flow, showExport, onExport, onExportDrawio, onExportExcel,
   editable, selectedConnKey, selectedConnHasOverride, onResetSelected, onClearSelection }) {
   return (
     <>
@@ -29,6 +29,16 @@ export function DiagramToolbar({ flow, showExport, onExport, onExportDrawio,
               onMouseLeave={e => e.currentTarget.style.background = '#2A5598'}>
               ↓ 匯出 .drawio
             </button>
+            {onExportExcel && (
+              <button onClick={onExportExcel}
+                title="下載任務表格 Excel（按下時會先檢核並儲存全頁變更）"
+                className="px-4 py-1.5 text-sm text-white rounded transition-colors"
+                style={{ background: '#1A3D69' }}
+                onMouseEnter={e => e.currentTarget.style.background = '#122A4A'}
+                onMouseLeave={e => e.currentTarget.style.background = '#1A3D69'}>
+                ↓ 下載 Excel
+              </button>
+            )}
           </div>
         </div>
       )}
