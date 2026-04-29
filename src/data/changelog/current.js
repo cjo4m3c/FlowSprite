@@ -6,6 +6,18 @@
 export default [
   {
     date: '2026-04-29',
+    title: '修任務元件文字 lineH 22→32（spec 早已訂的「單行間距」之前沒套用）',
+    items: [
+      '**緣由**：使用者 PR #98 部署後反饋「任務元件內的文字還是可以擴充為至少單行間距」，截圖示意兩行字之間擠在一起。**根因是 bug**：spec doc §13.3 早已訂「`SvgLabel` lineH = 32（兩行間隙 = 一行字高 = 單行間距）」，但 `shapes.jsx` 兩處 SvgLabel 顯式覆寫成 `lineH={22}` / `lineH={20}`，沒同步到 spec 期望值。',
+      '**修法**：`src/components/DiagramRenderer/shapes.jsx` line 84 (subprocess `[子流程]` 下方 task name) lineH `20→32` / line 87 (一般 task) lineH `22→32`。SvgLabel default 已是 32，這兩處改完就一致。',
+      '**為何 NODE_H 84 容得下 lineH 32**：SVG `<text>` multi-line 算法是「(n-1) × lineH + 字高」。3 行 lineH 32 = 2×32 + 16 = 80。NODE_H 84 - 80 = 4，上下 padding 各 2。**剛好 fit，spec doc §13.1 設計時就是這個算式**。subprocess + 3 行 task name 是罕見 worst case 會略超（cy+14 偏移 + 3×32 = 96 > 84），實務 task name 多為 1-2 行，可接受。',
+      '**為何之前 lineH 22 是錯的**：應該是 PR #87 (NODE_H 60→88) / PR #89 (NODE_H 88→84 / SvgLabel default lineH 30→32) 期間 shapes.jsx 沒同步覆寫值。spec doc §13.3 寫「lineH 32 兩行間隙 16」與 default 32 一致，但 shapes.jsx 本地覆寫蓋掉了。',
+      '**結果**：`PR #98 LAYOUT -10%`（NODE_W 156→140 / COL_W 184→164 等）+ `PR #99 lineH 22→32` 組合 = 元件變窄但行距變寬，task name 「擠在一起」感消失。',
+      '**動到的檔案（2 個）**：`src/components/DiagramRenderer/shapes.jsx`（兩處 lineH 數字）/ `src/data/changelog/current.js`（本條）。`build` 通過。spec doc §13.3 / §13.1 / §13.5 已早就寫對 lineH 32，不需修。',
+    ],
+  },
+  {
+    date: '2026-04-29',
     title: 'LAYOUT -10% 密度調整（字級不動，解使用者「需瀏覽器縮放 80%」訴求）',
     items: [
       '**緣由**：使用者：「電腦上測試要用瀏覽器縮放 80% 比較符合期望的版面比例，但這樣字會太小」。問題本質是「版面密度」vs「字級可讀性」分離訴求 — 瀏覽器縮放等比縮一切沒法挑字不縮。解法是直接改 source 縮 LAYOUT 但字級全部不動。',
