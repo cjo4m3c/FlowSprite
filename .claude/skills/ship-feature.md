@@ -40,15 +40,17 @@ description: Complete a feature branch and deploy to production. Runs the featur
 
 若任何文件要改，先改再進下一步。
 
-### 3.5 四視圖一致性檢核（每次新增 / 編輯 / 刪除任務的 PR 必跑）
+### 3.5 七視圖一致性 + 單檔大小檢核（每次 PR 必跑）
 
-操作完成後，**至少在本地 `npm run dev` 同時驗證**：
-- 流程圖（DiagramRenderer）任務數 / 編號 / 名稱
-- 右側 drawer 設定流程 tab 任務 list
-- 下方 Excel 表格（FlowTable）行數 / 編號 / 名稱
-- 下載 Excel 第三欄 L4 編號 + 第四欄任務名稱
+跑 **`/sync-views` skill**（定義於 `.claude/skills/sync-views.md`），它會：
 
-四者必須 100% 一致。詳見 `.claude/skills/doc-audit.md` §5。
+1. `find src -type f \( -name "*.js" -o -name "*.jsx" \) -size +15k` — 確認無超大檔案
+2. `grep` 確認沒有把 `src/model/` 該共用的邏輯寫死在視圖層
+3. 列出七視圖人工 walk 清單
+
+若 size check 命中 > 20KB → **停下來開拆檔 PR**，本功能 PR 等拆檔合併後 rebase 再繼續。
+
+至少在本地 `npm run dev` 驗證最關鍵 4 view：流程圖（DiagramRenderer）/ drawer 設定流程 tab / 下方 Excel 表格（FlowTable）/ 下載 Excel L4 編號。詳見 `sync-views.md`。
 
 ### 4. 建 PR
 
