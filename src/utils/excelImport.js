@@ -4,6 +4,13 @@ import {
   L3_NUMBER_PATTERN, L4_NUMBER_PATTERN,
   L4_START_PATTERN, L4_END_PATTERN, L4_GATEWAY_PATTERN,
 } from './taskDefs.js';
+import {
+  parseConnection,
+  detectGatewayFromText,
+} from '../model/connectionFormat.js';
+
+// Backward-compat alias — use parseConnection in new code.
+export const parseFlowAnnotations = parseConnection;
 
 // Column indices (0-based)
 const COL_L3_NUMBER = 0;
@@ -17,148 +24,12 @@ function normalizeL3Number(raw) {
   return String(raw ?? '').trim().replace(/\./g, '-');
 }
 
-/**
- * Parse 任務關聯說明 text into structured routing annotations.
- *
- * Supported keywords:
- *   流程開始，序列流向 X          → isStart, nextTaskNumbers
- *   流程結束                       → isEnd
- *   【流程斷點：...】               → isEnd (breakpoint)
- *   序列流向 X                     → nextTaskNumbers
- *   條件分支至 X（條件A）、Y（條件B）→ branchToNumbers / branchLabels  [XOR gateway]
- *   並行分支至 X、Y、Z             → parallelToNumbers                 [AND gateway]
- *   並行合併來自 X、Y，序列流向 Z  → parallelMergeNextNums             [AND join]
- *   條件合併來自多個分支，序列流向 Z→ condMergeNextNums                [XOR/OR join]
- *   迴圈返回至 X                   → loopBackNumbers (new, simple)     [regular task with back-edge]
- *   迴圈返回：若未通過則返回 X，若通過則序列流向 Y → loopConditions    [regular task, back + forward]
- *   調用子流程 A，返回後序列流向 X → nextTaskNumbers (return leg only) [treated as task]
- *
- * NOTE: 迴圈返回 is NOT a gateway. Task stays as regular rectangle shape;
- *       loop targets are merged into nextTaskIds so the diagram draws the
- *       back-edge to the earlier task without converting to a diamond.
- */
-function parseFlowAnnotations(flowText) {
-  const text = String(flowText ?? '');
-
-  // ── 序列流向 (also covers 返回後序列流向) ─────────────────────────────
-  const nextTaskNumbers = [
-    ...[...text.matchAll(/序列流向\s*([\d.-]+(?:_g\d*)?)/g)].map(m => m[1].trim()),
-    ...[...text.matchAll(/返回後序列流向\s*([\d.-]+(?:_g\d*)?)/g)].map(m => m[1].trim()),
-  ].filter((v, i, a) => a.indexOf(v) === i); // deduplicate
-
-  // ── 條件分支至 X（條件A）、Y（條件B） ────────────────────────
-  const branchToNumbers = [];
-  const branchLabels    = [];
-  const branchSection = text.match(/條件分支至\s*([^\n]+)/);
-  if (branchSection) {
-    branchSection[1].split(/[,、]/).forEach(entry => {
-      const numM   = entry.trim().match(/^([\d.-]+(?:_g\d*)?)/);
-      const lblM   = entry.match(/[（(]([^）)]+)[）)]/);
-      if (numM) {
-        branchToNumbers.push(numM[1]);
-        branchLabels.push(lblM ? lblM[1].trim() : '');
-      }
-    });
-  }
-
-  // ── 並行分支至 X（A 條件）、Y（B 條件） ─────────────────────
-  // AND 規格上「不評估條件」，但 UI 仍允許填 condition label 作為註記，
-  // 所以 parser 跟 XOR 同格式（容忍中括號內任意字串）。
-  const parallelToNumbers = [];
-  const parallelLabels    = [];
-  const parallelForkSection = text.match(/並行分支至\s*([^\n]+)/);
-  if (parallelForkSection) {
-    parallelForkSection[1].split(/[,、]/).forEach(entry => {
-      const numM = entry.trim().match(/^([\d.-]+(?:_g\d*)?)/);
-      const lblM = entry.match(/[(（]([^)）]+)[)）]/);
-      if (numM) {
-        parallelToNumbers.push(numM[1]);
-        parallelLabels.push(lblM ? lblM[1].trim() : '');
-      }
-    });
-  }
-
-  // ── 包容分支至 / 可能分支至 X（A）、Y（B） ─── OR fork
-  // 兩種動詞都吃進去：使用者實際 Excel 用「可能分支至」、規格寫的是「包容分支至」。
-  const inclusiveToNumbers = [];
-  const inclusiveLabels    = [];
-  const inclusiveForkSection = text.match(/(?:包容|可能)分支至\s*([^\n]+)/);
-  if (inclusiveForkSection) {
-    inclusiveForkSection[1].split(/[,、]/).forEach(entry => {
-      const numM = entry.trim().match(/^([\d.-]+(?:_g\d*)?)/);
-      const lblM = entry.match(/[(（]([^)）]+)[)）]/);
-      if (numM) {
-        inclusiveToNumbers.push(numM[1]);
-        inclusiveLabels.push(lblM ? lblM[1].trim() : '');
-      }
-    });
-  }
-
-  // ── 並行合併來自 ...，序列流向 Z ───────────────────────────
-  let parallelMergeNextNums = [];
-  const parallelMergeM = text.match(/並行合併來自[^，,\n]*[，,]\s*序列流向\s*([\d.-]+(?:_g\d*)?)/);
-  if (parallelMergeM) parallelMergeNextNums = [parallelMergeM[1].trim()];
-
-  // ── 條件合併來自多個分支，序列流向 Z ─────────────────────────
-  let condMergeNextNums = [];
-  const condMergeM = text.match(/條件合併來自多個分支[^，,\n]*[，,]\s*序列流向\s*([\d.-]+(?:_g\d*)?)/);
-  if (condMergeM) condMergeNextNums = [condMergeM[1].trim()];
-
-  // ── 包容合併來自多個分支，序列流向 Z ─── OR join
-  let inclusiveMergeNextNums = [];
-  const inclusiveMergeM = text.match(/包容合併來自[^，,\n]*[，,]\s*序列流向\s*([\d.-]+(?:_g\d*)?)/);
-  if (inclusiveMergeM) inclusiveMergeNextNums = [inclusiveMergeM[1].trim()];
-
-  // ── 調用子流程 5-3-2 / 調用子流程 5-3-2，返回後序列流向 5-3-1-5 ──
-  // Extracts the called L3 number (three-segment, e.g. "5-3-2"). The return
-  // target "返回後序列流向 X" is already captured via nextTaskNumbers above.
-  const subprocessM = text.match(/調用子流程\s*(\d+-\d+-\d+)/);
-  const subprocessL3 = subprocessM ? subprocessM[1] : '';
-
-  // ── 迴圈返回，序列流向 X (new format) / 迴圈返回至 X / 迴圈返回：X / 迴圈返回 X ──
-  // Accepts "，序列流向", 至, ：, : plus half/full-width space before the number.
-  // Legacy "迴圈返回：若未通過..." won't match here because Chinese chars aren't \d.
-  const loopBackNumbers = [...text.matchAll(/迴圈返回(?:[，,]\s*序列流向|至|：|:)?[\s　]*([\d.-]+(?:_g\d*)?)/g)]
-    .map(m => m[1].trim())
-    .filter((v, i, a) => a.indexOf(v) === i);
-
-  // ── 迴圈返回：若未通過則返回 X，若通過則序列流向 Y (legacy, back-compat) ──
-  const loopConditions = [];
-  const loopM = text.match(/若未通過則返回\s*([\d.-]+(?:_g\d*)?)[^若]*若通過則序列流向\s*([\d.-]+(?:_g\d*)?)/);
-  if (loopM) {
-    loopConditions.push({ label: '若未通過', nextNum: loopM[1].trim() });
-    loopConditions.push({ label: '若通過',   nextNum: loopM[2].trim() });
-  }
-
-  return {
-    isStart:             /流程開始/.test(text),
-    isEnd:               /流程結束/.test(text) || /【流程斷點/.test(text),
-    nextTaskNumbers,
-    branchToNumbers,    // XOR gateway fork targets
-    branchLabels,       // XOR condition labels (parallel array)
-    parallelToNumbers,  // AND gateway fork targets
-    parallelLabels,     // AND condition labels (parallel array, optional)
-    inclusiveToNumbers, // OR gateway fork targets
-    inclusiveLabels,    // OR condition labels (parallel array)
-    parallelMergeNextNums,   // AND join: outgoing target
-    condMergeNextNums,       // XOR join: outgoing target
-    inclusiveMergeNextNums,  // OR join: outgoing target
-    loopBackNumbers,    // back-edge targets (new simple syntax, non-gateway)
-    loopConditions,     // legacy loop annotation targets (non-gateway, both back + forward)
-    subprocessL3,       // called L3 activity number (e.g. "5-3-2"), empty if not a subprocess
-  };
-}
 
 /**
- * Determine gateway type from annotation. Returns null if not a gateway.
- *
- * ONLY fork patterns (條件分支至 / 並行分支至) make a row an independent
- * gateway element. Merge patterns (條件合併來自 / 並行合併來自) describe
- * an incoming-side annotation on a regular task: "multiple branches
- * converge into me, then I continue via 序列流向 Z". The task stays a
- * rectangle; the forward target Z is parsed via nextTaskNumbers.
- * Loop-return (迴圈返回至 / 若未通過則返回) is also not a gateway — it's
- * a back-edge on a regular task, merged into nextTaskIds.
+ * Determine gateway type from a parsed annotation. Returns null when the row
+ * is not an independent gateway element — only fork patterns qualify (see
+ * `detectGatewayFromText` in `src/model/connectionFormat.js` for the
+ * phrase-level rule). Merges and loop-returns are regular tasks.
  */
 function detectGatewayType(ann) {
   if (ann.parallelToNumbers.length > 0)  return 'and';
@@ -326,27 +197,6 @@ function buildFlow(rows) {
     id: generateId(), l3Number, l3Name, roles,
     tasks: finalTasks,
   };
-}
-
-/**
- * Detect gateway type from flow annotation keywords. Returns 'xor' | 'and' | null.
- *
- * ONLY fork patterns are independent gateway elements requiring `_g` suffix:
- *   - 條件分支至 …     → XOR fork
- *   - 並行分支至 …     → AND fork
- *
- * NOT gateways (these describe incoming/back behaviour on a regular task):
- *   - 條件合併來自多個分支、序列流向 Z → merge TARGET (validator check: Z
- *     receives ≥2 incoming branches)
- *   - 並行合併來自 X、Y、序列流向 Z    → AND-join TARGET (same semantics)
- *   - 迴圈返回至 X                      → back-edge on a regular task
- *   - 若未通過則返回 X、若通過則序列流向 Y → legacy loop-back, same as above
- */
-function detectGatewayFromText(flowText) {
-  if (/並行分支至/.test(flowText))     return 'and';
-  if (/(?:包容|可能)分支至/.test(flowText)) return 'or';
-  if (/條件分支至/.test(flowText))     return 'xor';
-  return null;
 }
 
 /**
