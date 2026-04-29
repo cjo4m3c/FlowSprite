@@ -20,13 +20,16 @@
 ## 2. Git 推送規則
 
 - `git push` 被 local proxy 擋下（HTTP 503），**不可使用**
-- 推送主要用 `mcp__github__push_files` 或 `mcp__github__create_or_update_file`（單檔 <7KB 最穩）
-- **一次只推 1 個檔案 / batch 3-4 個小檔**，避免 stream idle timeout
-- **大檔案 timeout SOP（硬性）**：
-  1. `wc -c <path>` 算大小；> 15KB **直接走手動**，不試 MCP push
-  2. 邊界值（7-15KB）試 MCP **一次**；timeout 立即切手動，**禁止重試**（重試只會再 timeout）
-  3. 手動：給使用者 `https://github.com/cjo4m3c/FlowSprite/edit/<branch>/<path>` + 完整內容 + commit message → 使用者貼上 commit
-  4. 手動完成後本地 `git fetch origin <branch> && git reset --hard origin/<branch>` 同步
+- **大檔案 timeout SOP（依 API 分流，2026-04-29 校正）**：
+
+  | API | 安全（不問直接推） | 邊界（試一次，timeout 切手動） | 直接手動 |
+  |---|---|---|---|
+  | `push_files` 多檔 batch | 總和 ≤ 10KB | 10–15KB | > 15KB |
+  | `create_or_update_file` 單檔 | ≤ 15KB | 15–18KB | > 18KB |
+
+  - 歷史教訓：原本兩種 API 共用 15KB 閥值，`create_or_update_file` 推 15.5KB 其實順利，但 `push_files` 26KB batch 就 timeout。瓶頸是**單次 API 呼叫的總 payload**，不是個別檔案大小
+  - 邊界值試 MCP **一次**；timeout 立即切手動，**禁止重試**（重試只會再 timeout）
+- **手動 SOP**：給使用者 `https://github.com/cjo4m3c/FlowSprite/edit/<branch>/<path>` + 完整內容 + commit message → 使用者貼上 commit。完成後本地 `git fetch origin <branch> && git reset --hard origin/<branch>` 同步
 - **刪檔**用 `mcp__github__delete_file`（快，無 content 傳輸）
 - commit message 用英文，描述變更原因
 - 絕不 push 到其他分支或建 PR（除非使用者明確要求）
@@ -67,7 +70,7 @@
   - **Source（`.js` / `.jsx`）**：軟 15KB / 硬 20KB。> 20KB 直接擋邏輯改動，先拆檔
   - **CLAUDE.md 自身**：軟 10KB / 硬 12KB（更嚴，因為每個 PR 都動且不能 shim）— **超過就把詳細內容搬到 `.claude/<topic>.md`，CLAUDE.md 留 1 行 pointer**
   - 拆檔走「shim re-export + 子目錄」pattern，外部 import 路徑不變
-  - 已拆解：`src/diagram/layout/`（11 檔）/ `src/components/DiagramRenderer/`（11 檔）/ `src/components/FlowEditor/`（7 檔）
+  - 已拆解：`src/diagram/layout/`（11 檔）/ `src/components/DiagramRenderer/`（11 檔）/ `src/components/FlowEditor/`（7 檔）/ `src/components/Dashboard/`（7 檔）
   - PR 前 `find src -type f \( -name "*.js" -o -name "*.jsx" \) -size +15k`；命中需在 PR 描述列原因或開拆檔 follow-up（`/ship-feature` / `/sync-views` 自動跑）
 - **文件批次更新**：純文件類（changelog / CLAUDE.md / README / HANDOVER）累積 3-5 個小修改後一起推；程式邏輯仍是一個 feature 一個 PR
 
