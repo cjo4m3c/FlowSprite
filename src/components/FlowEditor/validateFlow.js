@@ -1,4 +1,5 @@
 import { detectOverrideViolations } from '../../diagram/violations.js';
+import { getTaskIncoming } from '../../model/flowSelectors.js';
 
 // ── Pre-save validation ───────────────────────────────
 // Split into two tiers so the user can still save an imperfect draft:
@@ -18,15 +19,7 @@ export function validateFlow(flow) {
 
   // Count incoming connections per task so we can detect unconnected nodes
   // and validate merge-gateway arity.
-  const incoming = {};
-  tasks.forEach(t => {
-    const outs = t.type === 'gateway'
-      ? (t.conditions || []).map(c => c.nextTaskId)
-      : (t.nextTaskIds || []);
-    outs.filter(Boolean).forEach(id => {
-      incoming[id] = (incoming[id] || 0) + 1;
-    });
-  });
+  const incoming = getTaskIncoming(tasks);
 
   // ── Blocking checks ───────────────────────────────────
   if (startTasks.length === 0) blocking.push('必須要有「流程開始」節點');

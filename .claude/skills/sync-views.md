@@ -55,10 +55,20 @@ grep -rnP '(?:條件|並行|包容|可能)分支至(?!少)' src/ \
 2. 手動同步 HelpPanel + Dashboard 的範例文字（grep 一下找 3 處）
 
 ```bash
-# 編號顯示邏輯（已單一來源 = computeDisplayLabels）
+# 編號顯示邏輯（單一來源 = src/model/flowSelectors.js::computeDisplayLabels；
+# taskDefs.js re-export 給既有 importer）
 grep -rn 'computeDisplayLabels\|buildTableL4Map' src/ \
   --include="*.js" --include="*.jsx"
 # 期待：所有視圖都 import computeDisplayLabels；buildTableL4Map 僅一處（excelExport.js 內部）
+```
+
+```bash
+# Incoming-edge count map（PR-6 起單一來源 = flowSelectors.js::getTaskIncoming）
+# 偵測「自己重寫 incoming 計數」的反 pattern
+grep -rnP '\b(incoming|incomingCount|inc)\[\w+\]\s*=\s*\(\1\[\w+\]\s*\|\|\s*0\)\s*\+\s*1' src/ \
+  --include="*.js" --include="*.jsx" \
+  --exclude-dir=model
+# 期待：空輸出（除了 model/flowSelectors.js 自己）
 ```
 
 ### 3. FlowTable / DiagramRenderer / FlowEditor 的 useEffect 依賴
