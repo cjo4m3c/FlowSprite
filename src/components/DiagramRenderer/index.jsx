@@ -19,6 +19,7 @@ const { LANE_HEADER_W, TITLE_H } = LAYOUT;
 
 const DiagramRenderer = forwardRef(function DiagramRenderer({ flow, autoExportPng = false,
   onExportDone = null, onUpdateOverride = null, onChangeTarget = null,
+  onWireThroughGateway = null,
   onResetOverride = null, onTaskClick = null, highlightedTaskId = null }, ref) {
   const exportRef = useRef(null);
   const svgRef = useRef(null);
@@ -88,7 +89,7 @@ const DiagramRenderer = forwardRef(function DiagramRenderer({ flow, autoExportPn
 
   // Drag-endpoint state machine (extracted hook). Owns dragInfo + handlers.
   const { dragInfo, setDragInfo, startDrag, moveDrag, endDrag } = useDragEndpoint({
-    svgRef, flow, positions, connections, editable, onUpdateOverride, onChangeTarget,
+    svgRef, flow, positions, connections, editable, onUpdateOverride, onChangeTarget, onWireThroughGateway,
   });
 
   // Esc key cancels active drag / clears selection.

@@ -16,7 +16,7 @@ import { screenToSvg, nearestSide, findTaskAtPoint } from './dragHelpers.js';
  *     (PR G manual port override)
  */
 export function useDragEndpoint({ svgRef, flow, positions, connections, editable,
-  onUpdateOverride, onChangeTarget }) {
+  onUpdateOverride, onChangeTarget, onWireThroughGateway }) {
   const [dragInfo, setDragInfo] = useState(null);
 
   function startDrag(evt, connKey, endpoint) {
@@ -67,12 +67,23 @@ export function useDragEndpoint({ svgRef, flow, positions, connections, editable
     // Priority 1 — PR J: target handle dropped on a different valid task →
     // change the connection's target. Snap port = nearest side of new target
     // to the drop coordinate.
-    if (dragInfo.dropTargetId && dragInfo.endpoint === 'target' && onChangeTarget) {
+    //
+    // Special case (PR-A): if drop target is a GATEWAY, also auto-add a
+    // condition on it pointing back at the original target B. So dragging
+    // A→B's target endpoint to gateway C produces:
+    //   - A → C (the retarget)
+    //   - C → B (new condition, empty label, user fills via ContextMenu)
+    if (dragInfo.dropTargetId && dragInfo.endpoint === 'target') {
       const newTargetId = dragInfo.dropTargetId;
       const newPos = positions[newTargetId];
       const [sx, sy] = dragInfo.cursor;
       const snapSide = newPos ? nearestSide(newPos, sx, sy) : 'left';
-      onChangeTarget(conn.fromId, conn.overrideKey, newTargetId, snapSide);
+      const newTargetTask = flow.tasks.find(t => t.id === newTargetId);
+      if (newTargetTask?.type === 'gateway' && onWireThroughGateway) {
+        onWireThroughGateway(conn.fromId, conn.overrideKey, newTargetId, conn.toId, snapSide);
+      } else if (onChangeTarget) {
+        onChangeTarget(conn.fromId, conn.overrideKey, newTargetId, snapSide);
+      }
       setDragInfo(null);
       return;
     }
