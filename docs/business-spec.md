@@ -442,25 +442,22 @@ PNG / drawio / Excel **同色 `#2A5598`**（hover `#1E4677`），順序保持 PN
 
 ### 13.8 sticky 浮層 offset（捲動時固定在頂端的元素）
 
-**Header（深藍）**：`position: sticky; top: 0`，已有 `shadow-md`。實際渲染高度 ≈ **56px**（`px-6 py-3` + 內容 input/button ~32px = 56-58）。
+**Header（深藍）**：`position: sticky; top: 0`，已有 `shadow-md`。實際渲染高度 ≈ **56px**（`px-6 py-3` + 內容 input/button ~32px = 56-58）。所有下載按鈕（PNG / .drawio / Excel）統一以「↓ 下載 ▾」dropdown 形式放在這裡，整頁僅此一處下載入口。
 
-下游 sticky 元素都用 `top-[56px]`，緊貼 Header 底邊：
+**FlowTable 表格區自捲動**（`FlowTable.jsx`）：表格容器 `overflow: auto; max-height: calc(100vh - 80px)`。當頁面捲到表格區，整個容器進入 viewport 後內部開始自捲動，thead `<th>` 用 `sticky top: 0`（相對容器頂端，視覺上 = viewport 56px 附近）。
 
-| 元素 | 位置 | sticky 容器 | 視覺處理 |
+| 元素 | sticky 容器 | top 值 | 視覺處理 |
 |---|---|---|---|
-| 流程圖 Toolbar | `DiagramRenderer/index.jsx` 包 sticky wrapper | `DiagramRenderer` 自身 wrapper（離開 SVG 區自然釋放） | `bg-[#F5F8FC]` + `border-b` + `shadow-sm` |
-| FlowTable thead `<th>` | `FlowTable.jsx` | window（`overflow-x-auto` 不擋垂直 sticky，Chromium 規範） | `bg-gray-100` + 已有 `border-gray-200` |
+| FlowEditor Header | window | `0` | 深藍底 + `shadow-md`，整頁唯一固定頂層 |
+| FlowTable thead `<th>` | 表格自身 `overflow:auto` 容器 | `0` | `bg-gray-100`（套在 `<th>` 而非 `<tr>` 才不透） |
 
-**互斥行為**：Toolbar sticky 容器 = DiagramRenderer wrapper，當頁面捲過 SVG 進入表格區，Toolbar 自動釋放；同瞬間 thead 進入 viewport 接手 sticky。**無 JS**，純 CSS 邊界。
+**為什麼不用「整頁 thead sticky `top-[56px]`」**（PR #91 嘗試後失敗）：CSS sticky 找最近的 scrolling box（**任一軸** `overflow: auto/scroll/hidden/clip` 都算）當 sticky boundary。Chromium 嚴格依規範。所以表格在 `overflow-x-auto` 容器內時，**垂直 sticky 也會被那個容器卡住**，邊界錯誤導致 thead 跟著表格捲走。
 
-**Header 高度漂移防護**：若改 Header（加按鈕 / 換字級 / 多列內容）導致實際高度變，**必須同步調整下列 `top-[56px]`**：
-- `src/components/FlowEditor/Header.jsx`（自身 padding/內容）
-- `src/components/DiagramRenderer/index.jsx`（Toolbar sticky wrapper）
-- `src/components/FlowTable.jsx`（thead `<th>` sticky）
+正解：**讓表格容器自己 scroll**（雙軸都自捲動 + maxHeight），thead `top: 0` 相對容器永遠在頂。整頁外部仍可 scroll 看流程圖區。
 
-PR 改 Header 前 `grep -rn "top-\[56px\]" src` 列出所有受影響的 sticky offset。
+**Header 高度漂移防護**：若改 Header（加按鈕 / 換字級 / 多列內容）導致實際高度變，**必須同步調整 FlowTable 的 maxHeight 計算**（`calc(100vh - 80px)` 中的 80 = Header 56 + main `py-6` 上半 24）。`grep -rn "100vh - 80px" src` 找定位點。
 
-**目標瀏覽器**：Chrome / Edge（同 Chromium 引擎），`position: sticky` 完全依規範運作，垂直 sticky 不被祖先 `overflow-x: auto` 容器干擾。Safari / Firefox 未列為優先支援。
+**目標瀏覽器**：Chrome / Edge（同 Chromium 引擎），`position: sticky` 完全依規範運作。Safari / Firefox 未列為優先支援。
 
 ---
 

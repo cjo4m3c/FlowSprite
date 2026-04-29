@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, forwardRef, useImperativeHandle } from 'react';
 import { toPng } from 'html-to-image';
 import { computeLayout } from '../../diagram/layout.js';
 import { detectOverrideViolations } from '../../diagram/violations.js';
@@ -8,7 +8,6 @@ import { exportFlowToExcel } from '../../utils/excelExport.js';
 import { todayYmd } from '../../utils/storage.js';
 import { ArrowMarkers, ConnectionArrow, EndpointHandle } from './arrows.jsx';
 import { LegendSection } from './legend.jsx';
-import { DiagramToolbar } from './Toolbar.jsx';
 import { StickyHeader } from './StickyHeader.jsx';
 import { TasksLayer } from './TasksLayer.jsx';
 import {
@@ -18,10 +17,9 @@ import { useDragEndpoint } from './useDragEndpoint.js';
 
 const { LANE_HEADER_W, TITLE_H } = LAYOUT;
 
-export default function DiagramRenderer({ flow, showExport = true, autoExportPng = false,
+const DiagramRenderer = forwardRef(function DiagramRenderer({ flow, autoExportPng = false,
   onExportDone = null, onUpdateOverride = null, onChangeTarget = null,
-  onResetOverride = null, onTaskClick = null, highlightedTaskId = null,
-  onBeforeExport = null }) {
+  onResetOverride = null, onTaskClick = null, highlightedTaskId = null }, ref) {
   const exportRef = useRef(null);
   const svgRef = useRef(null);
   // Sticky-role-header support: when the diagram is wider than the viewport,
@@ -130,10 +128,9 @@ export default function DiagramRenderer({ flow, showExport = true, autoExportPng
     ? connections[parseInt(selectedConnKey.slice(1), 10)]
     : null;
 
-  // Export handlers all route through `onBeforeExport(callback)` when provided
-  // by the parent (FlowEditor). This guarantees a "save+validate" pass before
-  // any download — blocking errors abort the download, warnings open the
-  // SaveModal whose "仍然儲存" button forwards the same callback.
+  // Export handlers — exposed via useImperativeHandle below so the parent
+  // (FlowEditor → Header) can trigger downloads from outside DiagramRenderer.
+  // The parent wraps each call with its own save+validate gate.
   async function doPngExport() {
     if (!exportRef.current) return;
     resetStickyForExport();
@@ -148,28 +145,21 @@ export default function DiagramRenderer({ flow, showExport = true, autoExportPng
     }
   }
 
-  function handleExport() {
-    if (onBeforeExport) onBeforeExport(() => doPngExport());
-    else doPngExport();
+  function doDrawioExport() {
+    try { exportDrawio(flow); }
+    catch (e) { alert(`Draw.io 匯出失敗：${e?.message || e}`); }
   }
 
-  function handleExportDrawio() {
-    const run = () => {
-      try { exportDrawio(flow); }
-      catch (e) { alert(`Draw.io 匯出失敗：${e?.message || e}`); }
-    };
-    if (onBeforeExport) onBeforeExport(run);
-    else run();
+  function doExcelExport() {
+    try { exportFlowToExcel(flow); }
+    catch (e) { alert(`Excel 匯出失敗：${e?.message || e}`); }
   }
 
-  function handleExportExcel() {
-    const run = () => {
-      try { exportFlowToExcel(flow); }
-      catch (e) { alert(`Excel 匯出失敗：${e?.message || e}`); }
-    };
-    if (onBeforeExport) onBeforeExport(run);
-    else run();
-  }
+  useImperativeHandle(ref, () => ({
+    exportPng:    () => doPngExport(),
+    exportDrawio: () => doDrawioExport(),
+    exportExcel:  () => doExcelExport(),
+  }));
 
   // Derive endpoints of the hovered connection (if any) so we can light up
   // BOTH tasks that a hovered line connects.
@@ -178,27 +168,6 @@ export default function DiagramRenderer({ flow, showExport = true, autoExportPng
 
   return (
     <div className="flex flex-col gap-3 w-full">
-      {/* sticky wrapper — Toolbar stays pinned below the deep-blue Header
-          (top-[56px] = Header's effective height). Sticky boundary is this
-          DiagramRenderer wrapper, so the Toolbar releases naturally when the
-          page scrolls past the SVG into the FlowTable region — at which
-          point the table's <thead> sticky takes over. See CLAUDE.md §13.4. */}
-      <div className="sticky top-[56px] z-10 bg-[#F5F8FC] border-b border-gray-200 shadow-sm pb-1">
-        <DiagramToolbar
-          flow={flow} showExport={showExport}
-          onExport={handleExport} onExportDrawio={handleExportDrawio}
-          onExportExcel={handleExportExcel}
-          editable={editable}
-          selectedConnKey={selectedConnKey}
-          selectedConnHasOverride={selectedConnHasOverride}
-          onResetSelected={() => {
-            const idx = parseInt(selectedConnKey.slice(1), 10);
-            const c = connections[idx];
-            if (c && onResetOverride) onResetOverride(c.fromId, c.overrideKey);
-          }}
-          onClearSelection={() => setSelectedConnKey(null)} />
-      </div>
-
       <div ref={scrollContainerRef} onScroll={handleScrollLeft}
         className="overflow-auto border border-gray-300 rounded-lg bg-white w-full">
         <div ref={exportRef} style={{ display: 'inline-block', background: '#fff' }}>
@@ -316,4 +285,6 @@ export default function DiagramRenderer({ flow, showExport = true, autoExportPng
       <HoverTooltip tooltip={tooltip} tasks={flow.tasks} />
     </div>
   );
-}
+});
+
+export default DiagramRenderer;

@@ -7,7 +7,7 @@
  *   1. From scratch (via Wizard → redirected here after save)
  *   2. From Excel import (opened directly in view/edit mode)
  */
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import DiagramRenderer from '../DiagramRenderer.jsx';
 import FlowTable from '../FlowTable.jsx';
 import BackToTop from '../BackToTop.jsx';
@@ -32,6 +32,17 @@ export default function FlowEditor({ flow, onBack, onSave }) {
     }),
   }));
   const [hasChanges, setHasChanges] = useState(false);
+  // Ref to DiagramRenderer's imperative export API (forwardRef +
+  // useImperativeHandle exposes exportPng / exportDrawio / exportExcel).
+  // Used by the Header download dropdown — each item calls
+  // saveAndValidate(callback) which chains the export after the save+validate
+  // pass succeeds.
+  const diagramRef = useRef(null);
+  const downloadHandlers = {
+    png:    () => saveAndValidate(() => diagramRef.current?.exportPng()),
+    drawio: () => saveAndValidate(() => diagramRef.current?.exportDrawio()),
+    excel:  () => saveAndValidate(() => diagramRef.current?.exportExcel()),
+  };
   // Drawer state: tabs inside drawer are 'flow' (流程) / 'roles' (角色).
   // Excel table moves out of tabs entirely → always shown below diagram.
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -135,17 +146,18 @@ export default function FlowEditor({ flow, onBack, onSave }) {
         liveFlow={liveFlow} hasChanges={hasChanges} logoReaction={logoReaction}
         onBack={onBack} onPatch={patch}
         onTogglePin={handleTogglePin} onOpenDrawer={() => setDrawerOpen(true)}
-        onSave={handleSave} onResetAllConfirm={() => setResetAllModal(true)} />
+        onSave={handleSave} onResetAllConfirm={() => setResetAllModal(true)}
+        downloadHandlers={downloadHandlers} />
 
       <main className="px-4 py-6 w-full max-w-full">
-        {/* Diagram — always visible */}
-        <DiagramRenderer flow={liveFlow} showExport={true}
+        {/* Diagram — always visible. ref exposes exportPng/Drawio/Excel
+            imperatively so the Header download dropdown can trigger them. */}
+        <DiagramRenderer ref={diagramRef} flow={liveFlow}
           onUpdateOverride={actions.updateConnectionOverride}
           onChangeTarget={actions.changeConnectionTarget}
           onResetOverride={actions.resetConnectionOverride}
           onTaskClick={(task, x, y) => setContextMenu({ task, x, y })}
-          highlightedTaskId={contextMenu?.task?.id || null}
-          onBeforeExport={saveAndValidate} />
+          highlightedTaskId={contextMenu?.task?.id || null} />
 
         {/* Excel table — always visible (used to be a tab) */}
         <div className="mt-6 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden p-4">
