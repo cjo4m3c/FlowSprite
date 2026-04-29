@@ -5,6 +5,7 @@
 import * as XLSX from 'xlsx';
 import { todayYmd } from './storage.js';
 import { computeDisplayLabels } from './taskDefs.js';
+import { formatConnection } from '../model/connectionFormat.js';
 
 export const EXCEL_HEADERS = [
   'L3 活動編號',
@@ -53,120 +54,10 @@ export function buildTableL4Map(l3Number, tasks) {
 }
 
 /**
- * Auto-generate 任務關聯說明 text from a task's outgoing connections.
- * Returns a human-readable annotation string.
+ * Backward-compat alias — implementation now lives in `src/model/connectionFormat.js`.
+ * View-layer code should import `formatConnection` from the model directly.
  */
-export function generateFlowAnnotation(task, tasks, l4Map) {
-  const taskById = {};
-  tasks.forEach(t => { taskById[t.id] = t; });
-
-  // Count incoming connections per task (to detect merge nodes)
-  const incomingCount = {};
-  tasks.forEach(t => {
-    const outs = t.type === 'gateway'
-      ? (t.conditions || []).map(c => c.nextTaskId)
-      : (t.nextTaskIds || []);
-    outs.filter(Boolean).forEach(id => {
-      incomingCount[id] = (incomingCount[id] || 0) + 1;
-    });
-  });
-
-  const ct = task.connectionType;
-
-  if (ct === 'breakpoint' || task.type === 'end') {
-    if (ct === 'breakpoint') {
-      const reason = task.breakpointReason?.trim();
-      return reason ? `【流程斷點：${reason}】` : '【流程斷點】';
-    }
-    return '流程結束';
-  }
-
-  if (ct === 'subprocess') {
-    const subName = task.subprocessName?.trim() || '子流程';
-    const nextId = (task.nextTaskIds || []).find(id => taskById[id]);
-    const nextNum = nextId ? l4Map[nextId] : '';
-    return nextNum ? `調用子流程 ${subName}，返回後序列流向 ${nextNum}` : `調用子流程 ${subName}`;
-  }
-
-  if (ct === 'loop-return') {
-    const backId = task.nextTaskIds?.[0];
-    const backNum = backId && taskById[backId] ? l4Map[backId] : '';
-    const desc = task.loopDescription?.trim();
-    const base = backNum ? `迴圈返回，序列流向 ${backNum}` : '迴圈返回';
-    return desc ? `${base}（${desc}）` : base;
-  }
-
-  if (task.type === 'end') return '流程結束';
-
-  if (ct === 'start' || task.type === 'start') {
-    const nexts = (task.nextTaskIds || [])
-      .filter(id => taskById[id])
-      .map(id => l4Map[id]).filter(Boolean);
-    return nexts.length ? `流程開始，序列流向 ${nexts.join('、')}` : '流程開始';
-  }
-
-  if (task.type === 'gateway') {
-    const conds = task.conditions || [];
-    const isMergeNode = (incomingCount[task.id] || 0) > 1 && conds.length <= 1;
-    const gType = task.gatewayType || 'xor';
-
-    const outNums = conds.map(c => {
-      if (!c.nextTaskId || !taskById[c.nextTaskId]) return null;
-      return l4Map[c.nextTaskId] || null;
-    }).filter(Boolean);
-
-    // Build labelled fork parts (every gateway type uses the same shape now —
-    // condition labels are optional but always rendered if present).
-    const outParts = conds.map(c => {
-      if (!c.nextTaskId || !taskById[c.nextTaskId]) return null;
-      if (taskById[c.nextTaskId].type === 'end') {
-        return c.label ? `流程結束（${c.label}）` : '流程結束';
-      }
-      const num = l4Map[c.nextTaskId];
-      if (!num) return null;
-      return c.label ? `${num}（${c.label}）` : num;
-    }).filter(Boolean);
-
-    if (gType === 'and') {
-      if (isMergeNode && outNums.length === 1) {
-        return `並行合併來自多個分支，序列流向 ${outNums[0]}`;
-      }
-      return outParts.length ? `並行分支至 ${outParts.join('、')}` : '';
-    }
-
-    if (gType === 'or') {
-      if (isMergeNode && outNums.length === 1) {
-        return `包容合併來自多個分支，序列流向 ${outNums[0]}`;
-      }
-      return outParts.length ? `包容分支至 ${outParts.join('、')}` : '';
-    }
-
-    // XOR
-    if (isMergeNode && outParts.length === 1) {
-      return `條件合併來自多個分支，序列流向 ${outParts[0]}`;
-    }
-    return outParts.length ? `條件分支至 ${outParts.join('、')}` : '';
-  }
-
-  // Regular task / interaction / l3activity
-  const nexts = (task.nextTaskIds || []).filter(id => taskById[id]);
-  if (nexts.length === 0) return '';
-
-  const toOther = nexts.filter(id => taskById[id].type !== 'end' && taskById[id].connectionType !== 'end' && taskById[id].connectionType !== 'breakpoint');
-  if (toOther.length === 0) return '流程結束';
-
-  if (nexts.length === 1) {
-    const num = l4Map[nexts[0]];
-    return num ? `序列流向 ${num}` : '';
-  }
-
-  // Multiple outgoing (parallel)
-  const parts = nexts.map(id => {
-    if (taskById[id].type === 'end') return '流程結束';
-    return l4Map[id];
-  }).filter(Boolean);
-  return parts.length ? `並行分支至 ${parts.join('、')}` : '';
-}
+export const generateFlowAnnotation = formatConnection;
 
 /**
  * Build the 2D array of rows (no header) for the Excel sheet.
