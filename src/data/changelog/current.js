@@ -6,24 +6,15 @@
 export default [
   {
     date: '2026-04-29',
-    title: '抽出 src/data/helpPanelData.js — HelpPanel 規則 data 與 spec doc 對齊',
+    title: '業務規格文件單一來源 refactor — spec doc + helpPanelData + 規則文件分流',
     items: [
-      '**承接前 PR**：`docs/business-spec.md` 上線後，HelpPanel.jsx 內嵌的 8 個 data array（HIERARCHY / NUMBERING / ELEMENTS / VALIDATION / CONNECTIONS / EDITABLE_ACTIONS / FORBIDDEN_RULES / EXPORTS）變成「給使用者看的規則摘要」，但跟 spec doc 章節無明顯對應，仍有漂移風險。',
-      '**新檔 `src/data/helpPanelData.js`（15.8KB）**：8 個 array 從 HelpPanel.jsx 完整搬出，每個 array 上方加 `// 對應 docs/business-spec.md §X` 章節錨點。改規則時順流程：spec doc → helpPanelData.js → changelog。HelpPanel.jsx 只負責 UI render。',
-      '**HelpPanel.jsx 26KB → 11.3KB**：刪掉 263 行 data 區段 + 維護註解 header，剩下純 UI（Section helper + Modal wrapper + 8 個 Section render block）。對外 API 不變（仍 default export `HelpPanel`），App.jsx 一行不動。**順手解掉 backlog 一條**：`HelpPanel.jsx 26KB` 拆檔項從待辦清單移除（拆出去的 helpPanelData.js 雖 15.8KB 但 data-only 無邏輯，且須整檔 import）。',
-      '**驗證**：`npm run build` 通過（112 modules transformed），HelpPanel modal 內所有 Section render 邏輯逐行保留。',
-      '**後續 PR**：① 縮 `.claude/business-rules.md` 成純 Claude 工作流慣例（§1 / §2 業務規則改 pointer 指 spec doc）② CLAUDE.md §8 加「改業務規則 = 同改 spec + helpPanelData + changelog」檢查項。',
-    ],
-  },
-  {
-    date: '2026-04-29',
-    title: '新增：業務規格文件 docs/business-spec.md（單一規則來源）',
-    items: [
-      '**緣由**：使用者：「希望可以產出一份業務規格文件，未來協作以這份文件的規則為基礎來討論優化，首頁右上角『規則說明』也以這份文件為基礎撰寫使用者需要知道的操作重點」。原本 `.claude/business-rules.md`（給 Claude）跟 `HelpPanel.jsx`（給使用者）兩邊都自稱 single source of truth，改規則時容易漂移。',
-      '**新檔**：`docs/business-spec.md` 12 章 / ~16KB — 階層定義 / 編號規則 / 元件類型 / 連線序列 / 路由三規則 / 編號顯示分層 / 儲存檢核兩層 / 編輯操作 / 禁止規則 / 匯出格式 / Excel I/O 相容 / 七視圖一致性。',
-      '**對應實作 pointer 用「目錄路徑 + 關鍵符號名」取代具體檔名**（避免重構拆檔時 silent path drift），唯一例外是 §12 七視圖一致性表格保留具體 entry file（拿來當 audit checklist）。順手修正 spec 草稿 2 個錯路徑：`RightDrawer` / `Wizard` 在 `src/components/` 不在 `FlowEditor/`；`violations` 在 `src/diagram/` 不在 `src/utils/`。',
-      '**定位**：本文件 = 業務規則單一來源；`.claude/business-rules.md` 後續會縮成 Claude 工作流慣例（協作偏好 / 工程慣例）；HelpPanel 後續抽出 `src/data/helpPanelData.js` 並用章節編號錨點同步。',
-      '**後續 PR**：① 抽 HelpPanel data 到 `src/data/helpPanelData.js`，每個 array 上方加 `// 對應 docs/business-spec.md §X.Y` ② 縮 `.claude/business-rules.md` 成純 Claude 慣例 + pointer ③ CLAUDE.md §8 加「改業務規則 = 同改 spec + helpPanelData + changelog」。',
+      '**緣由**：使用者：「希望可以產出一份業務規格文件，未來協作以這份文件的規則為基礎來討論優化，首頁右上角『規則說明』也以這份文件為基礎撰寫使用者需要知道的操作重點」。原本 `.claude/business-rules.md`（給 Claude）跟 `HelpPanel.jsx`（給使用者）兩邊都自稱 single source of truth，改規則時容易漂移。本 PR 重整為「業務規則 1 個源頭 + 2 個 consumer」結構。',
+      '**新檔 `docs/business-spec.md` 12 章 / ~16KB**（業務規則單一來源）：階層定義 / 編號規則 / 元件類型 / 連線序列 / 路由三規則 / 編號顯示分層 / 儲存檢核兩層 / 編輯操作 / 禁止規則 / 匯出格式 / Excel I/O 相容 / 七視圖一致性。每章末尾「對應實作」列**目錄路徑 + 關鍵符號名**（不寫具體檔名，避免重構拆檔 silent drift），唯一例外是 §12 七視圖表保留具體 entry file 當 audit checklist。順手修正草稿 2 個錯路徑（`RightDrawer` / `Wizard` 在 `src/components/`、`violations` 在 `src/diagram/`）。',
+      '**新檔 `src/data/helpPanelData.js` 15.8KB**（HelpPanel 給使用者看的規則摘要）：8 個 data array（HIERARCHY / NUMBERING / ELEMENTS / VALIDATION / CONNECTIONS / EDITABLE_ACTIONS / FORBIDDEN_RULES / EXPORTS）從 HelpPanel.jsx 完整搬出，每個 array 上方加 `// 對應 docs/business-spec.md §X` 章節錨點。',
+      '**`HelpPanel.jsx` 26KB → 11.3KB**：刪 263 行 data 區段 + 維護註解 header，剩純 UI render。對外 API 不變（仍 default export），App.jsx 一行不動。**順手解掉 backlog 一條**：`HelpPanel.jsx 26KB` 拆檔項移除。',
+      '**`.claude/business-rules.md` 4.9KB → 3KB**：§1（5 條業務規則）+ §2（閘道分類）刪掉改 pointer 指向 spec doc，保留 §3（工程慣例：trace 驗證 / Excel I/O 相容 / CJK wrap / 文件同步 / 日期取法）+ §4（協作偏好）。本檔現在只放 Claude 工作流相關慣例。',
+      '**`CLAUDE.md` 更新（7.2KB → 8KB）**：頂部外部檔清單加 spec doc + helpPanelData.js；§8 完成檢查表第 3 點明確列出「改業務規則 = `docs/business-spec.md` + `src/data/helpPanelData.js` + changelog 三件組」；§10 業務規則表加 spec 章節欄；§3 閘道分類 pointer 改指 spec doc §4.1；§6 拆檔已解清單加 HelpPanel 26KB→11.3KB。',
+      '**驗證**：`npm run build` 通過（112 modules transformed），HelpPanel modal Section render 邏輯逐行保留。',
     ],
   },
   {
