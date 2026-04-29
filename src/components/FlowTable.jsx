@@ -5,14 +5,61 @@ import {
   EXCEL_HEADERS,
 } from '../utils/excelExport.js';
 
+// Sticky-left columns spec — leftmost N columns are frozen during horizontal
+// scroll so identifiers (L3 / L4 numbers + names) stay visible. Widths are
+// fixed to known values so each cell knows its `left` offset.
+//
+// Indices are positions in EXCEL_HEADERS. When showL3 is off we hide cols
+// 0/1, but L4-number / L4-name slide left and become the leftmost frozen
+// pair. Computation lives in `getStickyMap` below.
+const STICKY_WIDTHS_WITH_L3 = [
+  { col: 0, width: 100 }, // L3 編號
+  { col: 1, width: 160 }, // L3 名稱
+  { col: 2, width: 110 }, // L4 編號
+  { col: 3, width: 260 }, // L4 名稱
+];
+const STICKY_WIDTHS_WITHOUT_L3 = [
+  { col: 2, width: 110 }, // L4 編號
+  { col: 3, width: 260 }, // L4 名稱
+];
+
+function getStickyMap(showL3) {
+  const list = showL3 ? STICKY_WIDTHS_WITH_L3 : STICKY_WIDTHS_WITHOUT_L3;
+  const map = {};
+  let acc = 0;
+  list.forEach(({ col, width }) => {
+    map[col] = { left: acc, width };
+    acc += width;
+  });
+  return map;
+}
+
+// Shared cell builder. Pass `sticky={ left, width }` to freeze this cell on
+// horizontal scroll; opaque background is required (sticky cells overlay
+// scrolled content). Plain cells fall back to `min-w-` widths.
+function cellStickyStyle(sticky) {
+  if (!sticky) return undefined;
+  return {
+    position: 'sticky',
+    left: `${sticky.left}px`,
+    width: `${sticky.width}px`,
+    minWidth: `${sticky.width}px`,
+    zIndex: 4,
+  };
+}
+
 // EditCell — buffered textarea. Local state holds the typing in-flight; we
 // only patch back to liveFlow on blur to avoid a re-layout per keystroke.
 // `value` change from outside re-syncs the buffer.
-function EditCell({ value, onChange, placeholder = '', wide = false }) {
+function EditCell({ value, onChange, placeholder = '', wide = false, sticky = null }) {
   const [local, setLocal] = useState(value || '');
   useEffect(() => { setLocal(value || ''); }, [value]);
+  const widthCls = sticky ? '' : (wide ? 'min-w-[260px]' : 'min-w-[140px]');
   return (
-    <td className={`border border-gray-200 px-1 py-0.5 align-top ${wide ? 'min-w-[260px]' : 'min-w-[140px]'}`}>
+    <td
+      className={`border border-gray-200 px-1 py-0.5 align-top bg-white ${widthCls}`}
+      style={cellStickyStyle(sticky)}
+    >
       <textarea
         value={local}
         onChange={e => setLocal(e.target.value)}
@@ -25,9 +72,15 @@ function EditCell({ value, onChange, placeholder = '', wide = false }) {
   );
 }
 
-function ReadCell({ value, muted = false, wide = false }) {
+function ReadCell({ value, muted = false, wide = false, sticky = null }) {
+  const widthCls = sticky ? '' : (wide ? 'min-w-[260px]' : 'min-w-[140px]');
+  const bg = muted ? 'bg-gray-50' : 'bg-gray-50';
+  const text = muted ? 'text-gray-400' : 'text-gray-700';
   return (
-    <td className={`border border-gray-200 px-2 py-1.5 text-base whitespace-pre-wrap align-top ${wide ? 'min-w-[260px]' : 'min-w-[140px]'} ${muted ? 'bg-gray-50 text-gray-400' : 'bg-gray-50 text-gray-700'}`}>
+    <td
+      className={`border border-gray-200 px-2 py-1.5 text-base whitespace-pre-wrap align-top ${bg} ${text} ${widthCls}`}
+      style={cellStickyStyle(sticky)}
+    >
       {value}
     </td>
   );
@@ -35,7 +88,7 @@ function ReadCell({ value, muted = false, wide = false }) {
 
 function RoleCell({ roleId, roles, onChange }) {
   return (
-    <td className="border border-gray-200 px-1 py-0.5 align-top min-w-[140px]">
+    <td className="border border-gray-200 px-1 py-0.5 align-top min-w-[140px] bg-white">
       <select
         value={roleId || ''}
         onChange={e => onChange(e.target.value)}
@@ -72,6 +125,8 @@ export default function FlowTable({ flow, onUpdateTask }) {
     catch {}
   }, [showL3]);
 
+  const stickyMap = useMemo(() => getStickyMap(showL3), [showL3]);
+
   function updateField(taskId, field, value) {
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
@@ -93,12 +148,10 @@ export default function FlowTable({ flow, onUpdateTask }) {
         </button>
       </div>
 
-      {/* Self-scrolling container. The maxHeight + overflow:auto pattern
-          puts the sticky boundary on this div itself: thead `top:0` sticks
-          to the container's top edge. When the page scrolls into the
-          table, the container settles into view; the user scrolls inside
-          it to traverse rows while the thead stays pinned. See
-          docs/business-spec.md §13.8. */}
+      {/* Self-scrolling container. Vertical: thead stays pinned via top:0.
+          Horizontal: leftmost identifier columns (L4 編號 / 名稱; plus L3 pair
+          when toggled on) are pinned via sticky left. Sticky boundary is
+          this div itself; both axes covered by the same overflow:auto. */}
       <div
         className="overflow-auto border border-gray-200 rounded-lg"
         style={{ maxHeight: 'calc(100vh - 80px)' }}
@@ -109,10 +162,19 @@ export default function FlowTable({ flow, onUpdateTask }) {
               {EXCEL_HEADERS.map((h, i) => {
                 // Skip L3 編號 (i=0) and L3 名稱 (i=1) when toggle is off.
                 if (!showL3 && (i === 0 || i === 1)) return null;
+                const sticky = stickyMap[i];
+                // Sticky+top corner cells need higher z so they sit above
+                // both the row's other sticky-left cells and the rest of
+                // the thead (which is sticky-top only).
+                const z = sticky ? 7 : 5;
+                const widthStyle = sticky
+                  ? { width: `${sticky.width}px`, minWidth: `${sticky.width}px`, left: `${sticky.left}px` }
+                  : {};
                 return (
                   <th
                     key={i}
-                    className="border border-gray-200 px-2 py-2 text-left font-semibold text-gray-700 align-middle bg-gray-100 sticky top-0 z-[5]"
+                    className={`border border-gray-200 px-2 py-2 text-left font-semibold text-gray-700 align-middle bg-gray-100 sticky top-0`}
+                    style={{ ...widthStyle, zIndex: z, ...(sticky ? { position: 'sticky' } : {}) }}
                   >
                     {h}
                   </th>
@@ -125,13 +187,14 @@ export default function FlowTable({ flow, onUpdateTask }) {
               const annotation = generateFlowAnnotation(task, tasks, l4Map);
               return (
                 <tr key={task.id} className="hover:bg-blue-50 transition-colors">
-                  {showL3 && <ReadCell value={flow.l3Number} muted />}
-                  {showL3 && <ReadCell value={flow.l3Name} muted />}
-                  <ReadCell value={l4Map[task.id] || ''} />
+                  {showL3 && <ReadCell value={flow.l3Number} muted sticky={stickyMap[0]} />}
+                  {showL3 && <ReadCell value={flow.l3Name} muted sticky={stickyMap[1]} />}
+                  <ReadCell value={l4Map[task.id] || ''} sticky={stickyMap[2]} />
                   <EditCell wide
                     value={task.name || ''}
                     onChange={v => updateField(task.id, 'name', v)}
                     placeholder="任務名稱"
+                    sticky={stickyMap[3]}
                   />
                   <EditCell wide
                     value={task.description || ''}

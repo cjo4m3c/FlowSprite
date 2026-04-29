@@ -37,7 +37,7 @@ export default function TaskCard({ task, roles, allTasks, displayLabels, onUpdat
         <DragHandle />
 
         {/* Badge / number */}
-        <div className="w-[100px] flex-shrink-0 flex items-center">
+        <div className="w-[120px] flex-shrink-0 flex items-center">
           {ct === 'sequence' && num ? (
             <span className="text-sm font-mono text-gray-500 font-semibold whitespace-nowrap">{num}</span>
           ) : (

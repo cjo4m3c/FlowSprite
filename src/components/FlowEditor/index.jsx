@@ -183,7 +183,17 @@ export default function FlowEditor({ flow, onBack, onSave }) {
           taskDrag={taskDrag} roleDrag={roleDrag}
           onPatch={patch}
           onUpdateTask={actions.updateTask} onRemoveTask={actions.removeTask}
-          onAddTask={actions.addTask} />
+          onAddTask={actions.addTask}
+          onAddTaskAt={(index) => {
+            // Click-to-insert at exact slot.
+            //   index 0           → before first task   = addTaskBefore(tasks[0])
+            //   index N (1..len)  → after tasks[N-1]    = addTaskAfter(tasks[N-1])
+            //   index >= len      → append at end       = addTask
+            const tasks = liveFlow.tasks || [];
+            if (index <= 0 && tasks[0]) actions.addTaskBefore(tasks[0].id);
+            else if (index >= tasks.length) actions.addTask();
+            else actions.addTaskAfter(tasks[index - 1].id);
+          }} />
       </RightDrawer>
 
       {/* ContextMenu — shown when user clicks a shape on the diagram */}
