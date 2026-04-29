@@ -80,15 +80,9 @@ export default function FlowTable({ flow, onUpdateTask }) {
 
   return (
     <div className="mt-6">
-      <div className="mb-3 flex items-start justify-between gap-4">
-        <div>
-          <h3 className="text-xl font-semibold text-gray-700">
-            任務表格 <span className="text-base font-normal text-gray-400">（{tasks.length} 筆）</span>
-          </h3>
-          <p className="text-base text-gray-400 mt-0.5">
-            白色欄位可直接編輯，灰色欄位為唯讀。離開欄位（Tab / 點別處）即同步到上方流程圖與編輯器；按頂部「儲存」一次存全部。
-          </p>
-        </div>
+      {/* Toggle bar — small, no title/description (info redundant with the
+          page Header). The L3-columns toggle is kept because it's actionable. */}
+      <div className="mb-2 flex justify-end">
         <button
           type="button"
           onClick={() => setShowL3(v => !v)}
@@ -99,7 +93,16 @@ export default function FlowTable({ flow, onUpdateTask }) {
         </button>
       </div>
 
-      <div className="overflow-x-auto border border-gray-200 rounded-lg">
+      {/* Self-scrolling container. The maxHeight + overflow:auto pattern
+          puts the sticky boundary on this div itself: thead `top:0` sticks
+          to the container's top edge. When the page scrolls into the
+          table, the container settles into view; the user scrolls inside
+          it to traverse rows while the thead stays pinned. See
+          docs/business-spec.md §13.8. */}
+      <div
+        className="overflow-auto border border-gray-200 rounded-lg"
+        style={{ maxHeight: 'calc(100vh - 80px)' }}
+      >
         <table className="border-collapse text-base" style={{ minWidth: '1100px' }}>
           <thead>
             <tr className="align-middle">
@@ -109,7 +112,7 @@ export default function FlowTable({ flow, onUpdateTask }) {
                 return (
                   <th
                     key={i}
-                    className="border border-gray-200 px-2 py-2 text-left font-semibold text-gray-700 align-middle bg-gray-100 sticky top-[56px] z-[5]"
+                    className="border border-gray-200 px-2 py-2 text-left font-semibold text-gray-700 align-middle bg-gray-100 sticky top-0 z-[5]"
                   >
                     {h}
                   </th>

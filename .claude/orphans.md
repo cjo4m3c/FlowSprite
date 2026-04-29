@@ -13,6 +13,7 @@
 | `src/constants/colors.js` | 被 `src/diagram/constants.js` 取代 |
 | `src/constants/defaultInput.js` | 只給已刪的 InputPanel 用 |
 | `swimlane.html` | 舊版獨立 HTML，已遷移至 React + Vite |
+| `src/components/DiagramRenderer/Toolbar.jsx` | 2026-04-29 移除：下載按鈕移到 `FlowEditor/Header.jsx` 的「↓ 下載 ▾」dropdown；editable 操作提示移除（重複使用者不需要）；選中連線反饋移除（使用者再點一次即可取消）。L3 標籤已在 Header input 顯示，不再需要重複。 |
 
 相關可移除 deps：`js-yaml`、`jszip` 已於 2026-04-21 移除（伴隨孤兒檔案清理）。
 

@@ -1,3 +1,5 @@
+import { useState, useRef, useEffect } from 'react';
+
 /**
  * Top header bar of FlowEditor:
  *   - back button + logo (with happy / wave reaction class)
@@ -5,11 +7,31 @@
  *   - unsaved-changes indicator
  *   - "重設所有手動端點" button (only when overrides exist)
  *   - pin toggle
- *   - "編輯" button (opens drawer)
+ *   - "打開編輯器" button (opens drawer)
+ *   - "↓ 下載 ▾" dropdown (PNG / .drawio / Excel) — each item runs
+ *     saveAndValidate first then triggers the matching exporter
  *   - "儲存" button
  */
 export function Header({ liveFlow, hasChanges, logoReaction, onBack, onPatch,
-  onTogglePin, onOpenDrawer, onSave, onResetAllConfirm }) {
+  onTogglePin, onOpenDrawer, onSave, onResetAllConfirm, downloadHandlers }) {
+  const [downloadOpen, setDownloadOpen] = useState(false);
+  const downloadRef = useRef(null);
+  useEffect(() => {
+    if (!downloadOpen) return;
+    function onDocClick(e) {
+      if (downloadRef.current && !downloadRef.current.contains(e.target)) {
+        setDownloadOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, [downloadOpen]);
+
+  function pickDownload(kind) {
+    setDownloadOpen(false);
+    downloadHandlers?.[kind]?.();
+  }
+
   return (
     <header className="px-6 py-3 shadow-md flex items-center gap-4 sticky top-0 z-10"
       style={{ background: '#2A5598', color: 'white' }}>
@@ -56,6 +78,34 @@ export function Header({ liveFlow, hasChanges, logoReaction, onBack, onPatch,
           className="px-3 py-1.5 text-base rounded border border-white border-opacity-40 text-white hover:bg-white hover:bg-opacity-10 transition-colors">
           打開編輯器
         </button>
+        <div ref={downloadRef} className="relative">
+          <button
+            onClick={() => setDownloadOpen(v => !v)}
+            title="下載流程圖或 Excel（會先檢核並儲存全頁變更）"
+            className="px-3 py-1.5 text-base rounded border border-white border-opacity-40 text-white hover:bg-white hover:bg-opacity-10 transition-colors whitespace-nowrap">
+            ↓ 下載 ▾
+          </button>
+          {downloadOpen && (
+            <div className="absolute right-0 mt-1 min-w-[160px] bg-white rounded shadow-lg border border-gray-200 py-1 z-20">
+              <button
+                onClick={() => pickDownload('png')}
+                className="block w-full text-left px-4 py-2 text-base text-gray-700 hover:bg-blue-50">
+                匯出 PNG
+              </button>
+              <button
+                onClick={() => pickDownload('drawio')}
+                title="可用 diagrams.net（免費）或 VS Code Draw.io 擴充套件開啟編輯"
+                className="block w-full text-left px-4 py-2 text-base text-gray-700 hover:bg-blue-50">
+                匯出 .drawio
+              </button>
+              <button
+                onClick={() => pickDownload('excel')}
+                className="block w-full text-left px-4 py-2 text-base text-gray-700 hover:bg-blue-50">
+                下載 Excel 表格
+              </button>
+            </div>
+          )}
+        </div>
         <button
           onClick={onSave}
           title={hasChanges ? '儲存所有變更' : '目前沒有未儲存的變更'}

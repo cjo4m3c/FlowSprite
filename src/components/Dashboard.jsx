@@ -471,7 +471,6 @@ export default function Dashboard({ flows, onNew, onEdit, onDelete, onImportExce
         <div style={{ position: 'fixed', left: '-9999px', top: '-9999px', pointerEvents: 'none' }}>
           <DiagramRenderer
             flow={pendingPngFlow}
-            showExport={false}
             autoExportPng={true}
             onExportDone={() => setPendingPngFlow(null)}
           />
@@ -484,7 +483,6 @@ export default function Dashboard({ flows, onNew, onEdit, onDelete, onImportExce
           <DiagramRenderer
             key={pngQueue[0].id}
             flow={pngQueue[0]}
-            showExport={false}
             autoExportPng={true}
             onExportDone={() => {
               setPngQueue(q => q.slice(1));
