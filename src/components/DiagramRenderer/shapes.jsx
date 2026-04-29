@@ -81,10 +81,10 @@ export function L3ActivityShape({ task, pos, l4Number, isHovered }) {
             fontSize={14} fill="#6B7280" fontFamily="Microsoft JhengHei, PingFang TC, sans-serif">
             [子流程]
           </text>
-          <SvgLabel text={task.name || ''} cx={cx} cy={cy + 14} maxChars={8} lineH={20} />
+          <SvgLabel text={task.name || ''} cx={cx} cy={cy + 14} maxChars={8} lineH={32} />
         </>
       ) : (
-        <SvgLabel text={task.name} cx={cx} cy={cy} maxChars={8} lineH={22} />
+        <SvgLabel text={task.name} cx={cx} cy={cy} maxChars={8} lineH={32} />
       )}
     </>
   );
