@@ -37,9 +37,9 @@ export default function TaskCard({ task, roles, allTasks, displayLabels, onUpdat
         <DragHandle />
 
         {/* Badge / number */}
-        <div className="w-14 flex-shrink-0 flex items-center">
+        <div className="w-[100px] flex-shrink-0 flex items-center">
           {ct === 'sequence' && num ? (
-            <span className="text-sm font-mono text-gray-500 font-semibold">{num}</span>
+            <span className="text-sm font-mono text-gray-500 font-semibold whitespace-nowrap">{num}</span>
           ) : (
             <span className="px-1.5 py-0.5 rounded text-sm font-bold whitespace-nowrap"
               style={{ background: badge.bg, color: badge.text }}>
@@ -74,8 +74,8 @@ export default function TaskCard({ task, roles, allTasks, displayLabels, onUpdat
 
       {/* Row 2: connection type + shape type (offset to align under name) */}
       <div className="flex items-center gap-2 px-2 pt-1.5 pb-2 min-w-0">
-        {/* Spacer matches drag (~20) + badge (56) + role (96) + 3×gap (24) = 196 */}
-        <div className="w-[196px] flex-shrink-0" aria-hidden="true" />
+        {/* Spacer matches drag (~20) + badge (100) + role (96) + 3×gap (24) = 240 */}
+        <div className="w-[240px] flex-shrink-0" aria-hidden="true" />
 
         {/* Connection type */}
         <select value={ct} onChange={e => onUpdate(applyConnectionType(task, e.target.value))}
