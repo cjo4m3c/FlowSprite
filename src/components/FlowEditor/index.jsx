@@ -155,6 +155,7 @@ export default function FlowEditor({ flow, onBack, onSave }) {
         <DiagramRenderer ref={diagramRef} flow={liveFlow}
           onUpdateOverride={actions.updateConnectionOverride}
           onChangeTarget={actions.changeConnectionTarget}
+          onWireThroughGateway={actions.wireConnectionThroughGateway}
           onResetOverride={actions.resetConnectionOverride}
           onTaskClick={(task, x, y) => setContextMenu({ task, x, y })}
           highlightedTaskId={contextMenu?.task?.id || null} />
@@ -203,6 +204,8 @@ export default function FlowEditor({ flow, onBack, onSave }) {
           onAddConnection={actions.addConnection}
           onAddGateway={actions.insertGatewayAfter}
           onAddL3Activity={actions.addL3ActivityAfter}
+          onAddOther={actions.addOtherAfter}
+          onConvertType={actions.convertTaskType}
           onDelete={actions.removeTask}
           onClose={() => setContextMenu(null)}
         />

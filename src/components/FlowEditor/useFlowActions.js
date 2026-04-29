@@ -1,5 +1,6 @@
 import { makeTask, applySequentialDefaults, applyGatewayPrefix } from '../../utils/taskDefs.js';
 import { generateId } from '../../utils/storage.js';
+import { makeConverterActions } from './useFlowActions/converters.js';
 
 /**
  * Action handlers for FlowEditor — all graph-mutation logic in one place.
@@ -26,7 +27,9 @@ export function useFlowActions({ liveFlow, patch }) {
   function addTaskBefore(anchorId) {
     const idx = liveFlow.tasks.findIndex(t => t.id === anchorId);
     if (idx < 0) return;
-    const newTask = makeTask();
+    const anchor = liveFlow.tasks[idx];
+    // Inherit anchor's roleId so the new task lands in the same swimlane.
+    const newTask = makeTask({ roleId: anchor.roleId || '' });
     // Rewire: every task that pointed at anchor → point at newTask
     // (covers regular task.nextTaskIds and gateway conditions[].nextTaskId).
     const rewired = liveFlow.tasks.map(t => {
@@ -57,7 +60,8 @@ export function useFlowActions({ liveFlow, patch }) {
     const idx = liveFlow.tasks.findIndex(t => t.id === anchorId);
     if (idx < 0) return;
     const anchor = liveFlow.tasks[idx];
-    const newTask = makeTask();
+    // Inherit anchor's roleId so the new task lands in the same swimlane.
+    const newTask = makeTask({ roleId: anchor.roleId || '' });
 
     let rewired;
     if (anchor.type === 'gateway') {
@@ -179,6 +183,9 @@ export function useFlowActions({ liveFlow, patch }) {
     patch({ tasks: applySequentialDefaults(renumbered) });
   }
 
+  // addOtherAfter / convertTaskType / wireConnectionThroughGateway live in
+  // ./useFlowActions/converters.js (kept here as one factory call below) so
+  // this file stays under the 20KB hard limit.
   function removeTask(id) {
     if (liveFlow.tasks.length <= 1) return;
     // PR H: drop the task, AND clear any other task's connectionOverrides
@@ -282,6 +289,11 @@ export function useFlowActions({ liveFlow, patch }) {
     patch({ tasks: cleaned });
   }
 
+  // Converter / "add other" / wire-through-gateway actions live in
+  // ./useFlowActions/converters.js to keep this file under the 20KB hard
+  // limit. Same closure semantics — they capture liveFlow + patch.
+  const extra = makeConverterActions({ liveFlow, patch });
+
   return {
     updateTask,
     addTask,
@@ -295,5 +307,6 @@ export function useFlowActions({ liveFlow, patch }) {
     changeConnectionTarget,
     resetConnectionOverride,
     resetAllOverrides,
+    ...extra,
   };
 }

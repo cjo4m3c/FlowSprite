@@ -71,7 +71,7 @@
   - **Source（`.js` / `.jsx`）**：軟 15KB / 硬 20KB。> 20KB 直接擋邏輯改動，先拆檔
   - **CLAUDE.md 自身**：軟 10KB / 硬 12KB（更嚴，因為每個 PR 都動且不能 shim）— **超過就把詳細內容搬到 `.claude/<topic>.md`，CLAUDE.md 留 1 行 pointer**
   - 拆檔走「shim re-export + 子目錄」pattern，外部 import 路徑不變
-  - 已拆解：`src/diagram/layout/`（11 檔）/ `src/components/DiagramRenderer/`（10 檔）/ `src/components/FlowEditor/`（7 檔）/ `src/components/ContextMenu/`（2 檔；index.jsx + subforms.jsx）/ `src/components/HelpPanel.jsx` 26KB → 11.3KB（data 抽到 `src/data/helpPanelData.js`）
+  - 已拆解：`src/diagram/layout/`（11 檔）/ `src/components/DiagramRenderer/`（10 檔）/ `src/components/FlowEditor/`（7 檔 + `useFlowActions/converters.js` 子檔）/ `src/components/ContextMenu/`（2 檔；index.jsx + subforms.jsx）/ `src/components/HelpPanel.jsx` 26KB → 11.3KB（data 抽到 `src/data/helpPanelData.js`）
   - PR 前 `find src -type f \( -name "*.js" -o -name "*.jsx" \) -size +15k`；命中需在 PR 描述列原因或開拆檔 follow-up（`/ship-feature` / `/sync-views` 自動跑）
 - **文件批次更新**：純文件類（changelog / CLAUDE.md / README / HANDOVER）累積 3-5 個小修改後一起推；程式邏輯仍是一個 feature 一個 PR
 
