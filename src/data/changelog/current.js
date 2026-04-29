@@ -6,6 +6,18 @@
 export default [
   {
     date: '2026-04-29',
+    title: '編輯頁優化：FlowTable 橫向 sticky-left / 閘道標籤中文 / Drawer 上方+插入槽 / Role DropLine',
+    items: [
+      '**緣由**：使用者：「(1) 表格左右捲動時固定 L4 編號 / L4 名稱（顯示 L3 時也固定到 L4 名稱）(2) 編輯器把 XOR/AND/OR 改中文，子流→子流程 (3) 新增任務按鈕移上方 + 滑鼠點兩元件中間顯示線可插入 (4) 泳道角色拖曳要跟任務拖曳一樣顯示插入線」。',
+      '**Step 1 — FlowTable 橫向 sticky-left**：`FlowTable.jsx` 加 `getStickyMap(showL3)` helper，動態計算每欄 sticky `left` offset：showL3 off 時 L4 編號 left:0 (110px) / L4 名稱 left:110 (260px)；showL3 on 時 L3 編號 left:0 (100px) / L3 名稱 left:100 (160px) / L4 編號 left:260 (110px) / L4 名稱 left:370 (260px)。ReadCell / EditCell 收 `sticky={ left, width }` prop，用 inline style 套 `position:sticky` + 不透明 bg。thead `<th>` 也對應加 sticky-left；左上角 cell（top + left 雙 sticky）z-index 7 防被其他 sticky 蓋。',
+      '**Step 2 — 閘道標籤中文 + 子流程寬度**：`taskDefs.js` `CONN_BADGE` 改成 `排他 / 並行 / 包容`（取代 `XOR / AND / OR`）/ `子流程`（取代 `子流`）/ `迴圈`（取代 `↺`）；`taskOptionLabel` dropdown 三個 case 改 `排他/並行/包容`。`TaskCard.jsx` badge container width `100px → 120px` 容納 `子流程` 三個中文字。',
+      '**Step 3 — Drawer 新增任務按鈕移上 + 點擊插入槽**：`DrawerContent.jsx`「+ 新增任務」按鈕從 list 底部 → 移到 list **上方**（命名「新增任務（加到最後）」明示行為）。新增 `InsertSlot` 元件 — 介於每兩 TaskCard 之間 + list 開頭，hover 時顯示藍色淺線 + 「+ 插入任務」按鈕，點擊呼叫 `onAddTaskAt(index)`。`FlowEditor/index.jsx` 加 `onAddTaskAt` callback：`index 0 → addTaskBefore(tasks[0])` / `index N → addTaskAfter(tasks[N-1])` / `index ≥ len → addTask`。已重用既有 actions 不需新加 hook 邏輯。drag 進行時隱藏 InsertSlot 避免跟 DropLine 視覺衝突。',
+      '**Step 4 — Role DropLine 一致化**：`DrawerContent.jsx` role 區塊原本用 row 自身 `border-t-2 / border-b-2 border-blue-500` 高亮拖曳目標位置；改成跟 task 一樣用獨立 `<DropLine>` 元件介於 row 之間。`DropLine` 抽到檔案頂端共用（task drag 跟 role drag 都用）。視覺一致性提升。',
+      '**動到的檔案（5 個）**：`src/components/FlowTable.jsx`（重寫加 sticky-left）/ `src/utils/taskDefs.js`（CONN_BADGE + taskOptionLabel）/ `src/components/FlowEditor/TaskCard.jsx`（badge width 100→120）/ `src/components/FlowEditor/DrawerContent.jsx`（重寫加 InsertSlot + DropLine 共用 + role DropLine）/ `src/components/FlowEditor/index.jsx`（onAddTaskAt prop wiring）/ `src/data/changelog/current.js`（本條）。`build` 通過。',
+    ],
+  },
+  {
+    date: '2026-04-29',
     title: '首頁體驗優化：刪 Excel 格式 banner / 下載按鈕同色去 icon / Actions 推底 / max-w-7xl + 4 欄',
     items: [
       '**緣由**：使用者：「(1) 刪除上方 Excel 上傳格式 / 任務關聯說明標記區塊（規則說明已涵蓋，重複）(2) 卡片下載按鈕去 icon 同色，跟編輯頁文字風格一致 (3) 內容少時 actions 跟著上移留底部空白，希望固定置底 (4) 三欄佈局兩側留白太多，希望拉寬或變四格」。',

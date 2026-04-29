@@ -59,14 +59,14 @@ export const SHAPE_TYPES = [
 
 export const CONN_BADGE = {
   'sequence':           { label: '',     bg: '#E5E7EB', text: '#374151' },
-  'subprocess':         { label: '子流',  bg: '#EDE9FE', text: '#5B21B6' },
-  'conditional-branch': { label: 'XOR',  bg: '#FEF3C7', text: '#92400E' },
-  'parallel-branch':    { label: 'AND',  bg: '#D1FAE5', text: '#065F46' },
-  'inclusive-branch':   { label: 'OR',   bg: '#FEF9C3', text: '#854D0E' },
+  'subprocess':         { label: '子流程', bg: '#EDE9FE', text: '#5B21B6' },
+  'conditional-branch': { label: '排他',  bg: '#FEF3C7', text: '#92400E' },
+  'parallel-branch':    { label: '並行',  bg: '#D1FAE5', text: '#065F46' },
+  'inclusive-branch':   { label: '包容',  bg: '#FEF9C3', text: '#854D0E' },
   'start':              { label: '開始',  bg: '#D1FAE5', text: '#065F46' },
   'end':                { label: '結束',  bg: '#FEE2E2', text: '#991B1B' },
   'breakpoint':         { label: '斷點',  bg: '#FEE2E2', text: '#991B1B' },
-  'loop-return':        { label: '↺',   bg: '#EDE9FE', text: '#5B21B6' },
+  'loop-return':        { label: '迴圈',  bg: '#EDE9FE', text: '#5B21B6' },
 };
 
 export const CONN_ROW_BG = {
@@ -274,9 +274,9 @@ export function taskOptionLabel(task, displayLabels) {
   if (ct === 'start')              return `${num} ● 流程開始${name ? '：' + name : ''}`;
   if (ct === 'end')                return `${num} ⊙ 流程結束`;
   if (ct === 'breakpoint')         return `${num} ⊗ 流程斷點${name ? '：' + name : ''}`;
-  if (ct === 'conditional-branch') return `${num} ◇× XOR：${name || '（未命名）'}`;
-  if (ct === 'parallel-branch')    return `${num} ◇+ AND：${name || '（未命名）'}`;
-  if (ct === 'inclusive-branch')   return `${num} ◇⊙ OR：${name || '（未命名）'}`;
+  if (ct === 'conditional-branch') return `${num} ◇× 排他：${name || '（未命名）'}`;
+  if (ct === 'parallel-branch')    return `${num} ◇+ 並行：${name || '（未命名）'}`;
+  if (ct === 'inclusive-branch')   return `${num} ◇⊙ 包容：${name || '（未命名）'}`;
   if (ct === 'loop-return')        return `${num} ↺ 迴圈：${name || '（未命名）'}`;
   if (ct === 'subprocess')         return `${num} ▦ 子流程：${name || '（未命名）'}`;
   return `${num}${name ? ' ' + name : ' （未命名）'}`;
