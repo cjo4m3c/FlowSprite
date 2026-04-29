@@ -4,6 +4,7 @@ import { computeLayout } from '../../diagram/layout.js';
 import { detectOverrideViolations } from '../../diagram/violations.js';
 import { LAYOUT, COLORS } from '../../diagram/constants.js';
 import { exportDrawio } from '../../utils/drawioExport.js';
+import { exportFlowToExcel } from '../../utils/excelExport.js';
 import { todayYmd } from '../../utils/storage.js';
 import { ArrowMarkers, ConnectionArrow, EndpointHandle } from './arrows.jsx';
 import { LegendSection } from './legend.jsx';
@@ -19,7 +20,8 @@ const { LANE_HEADER_W, TITLE_H } = LAYOUT;
 
 export default function DiagramRenderer({ flow, showExport = true, autoExportPng = false,
   onExportDone = null, onUpdateOverride = null, onChangeTarget = null,
-  onResetOverride = null, onTaskClick = null, highlightedTaskId = null }) {
+  onResetOverride = null, onTaskClick = null, highlightedTaskId = null,
+  onBeforeExport = null }) {
   const exportRef = useRef(null);
   const svgRef = useRef(null);
   // Sticky-role-header support: when the diagram is wider than the viewport,
@@ -128,7 +130,11 @@ export default function DiagramRenderer({ flow, showExport = true, autoExportPng
     ? connections[parseInt(selectedConnKey.slice(1), 10)]
     : null;
 
-  async function handleExport() {
+  // Export handlers all route through `onBeforeExport(callback)` when provided
+  // by the parent (FlowEditor). This guarantees a "save+validate" pass before
+  // any download — blocking errors abort the download, warnings open the
+  // SaveModal whose "仍然儲存" button forwards the same callback.
+  async function doPngExport() {
     if (!exportRef.current) return;
     resetStickyForExport();
     try {
@@ -142,12 +148,27 @@ export default function DiagramRenderer({ flow, showExport = true, autoExportPng
     }
   }
 
+  function handleExport() {
+    if (onBeforeExport) onBeforeExport(() => doPngExport());
+    else doPngExport();
+  }
+
   function handleExportDrawio() {
-    try {
-      exportDrawio(flow);
-    } catch (e) {
-      alert(`Draw.io 匯出失敗：${e?.message || e}`);
-    }
+    const run = () => {
+      try { exportDrawio(flow); }
+      catch (e) { alert(`Draw.io 匯出失敗：${e?.message || e}`); }
+    };
+    if (onBeforeExport) onBeforeExport(run);
+    else run();
+  }
+
+  function handleExportExcel() {
+    const run = () => {
+      try { exportFlowToExcel(flow); }
+      catch (e) { alert(`Excel 匯出失敗：${e?.message || e}`); }
+    };
+    if (onBeforeExport) onBeforeExport(run);
+    else run();
   }
 
   // Derive endpoints of the hovered connection (if any) so we can light up
@@ -160,6 +181,7 @@ export default function DiagramRenderer({ flow, showExport = true, autoExportPng
       <DiagramToolbar
         flow={flow} showExport={showExport}
         onExport={handleExport} onExportDrawio={handleExportDrawio}
+        onExportExcel={handleExportExcel}
         editable={editable}
         selectedConnKey={selectedConnKey}
         selectedConnHasOverride={selectedConnHasOverride}

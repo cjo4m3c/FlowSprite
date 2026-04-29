@@ -88,37 +88,40 @@ export default function FlowEditor({ flow, onBack, onSave }) {
   // All graph mutations (addTask, addTaskAfter, insertGatewayAfter, ...)
   const actions = useFlowActions({ liveFlow, patch });
 
-  function doSave(flow) {
+  function doSave(flow, onSuccess) {
     onSave(flow);
     setHasChanges(false);
     setLogoReaction('wave');
     setSaveModal(null);
+    onSuccess?.();
   }
 
-  function handleSave() {
+  // Shared validate-then-save flow used by both the header save button and
+  // the three diagram export buttons (PNG / drawio / Excel). Callers pass
+  // `onSuccess` so they can chain a download after the save completes.
+  // Blocking errors abort entirely; warnings open the modal and the
+  // "仍然儲存" button forwards the same `onSuccess` callback.
+  function saveAndValidate(onSuccess) {
     const { blocking, warnings } = validateFlow(liveFlow);
     if (blocking.length > 0) {
       setSaveModal({ type: 'blocking', messages: blocking });
       return;
     }
     if (warnings.length > 0) {
-      setSaveModal({ type: 'warning', messages: warnings });
+      setSaveModal({ type: 'warning', messages: warnings, onSuccess });
       return;
     }
-    doSave(liveFlow);
+    doSave(liveFlow, onSuccess);
+  }
+
+  function handleSave() {
+    saveAndValidate();
   }
 
   function handleTogglePin() {
     const next = { ...liveFlow, pinned: !liveFlow.pinned };
     setLiveFlow(next);
     onSave(next);
-  }
-
-  function handleTableSave(updatedFlow) {
-    setLiveFlow(updatedFlow);
-    onSave(updatedFlow);
-    setHasChanges(false);
-    setLogoReaction('wave');
   }
 
   function handleResetAllConfirm() {
@@ -141,11 +144,12 @@ export default function FlowEditor({ flow, onBack, onSave }) {
           onChangeTarget={actions.changeConnectionTarget}
           onResetOverride={actions.resetConnectionOverride}
           onTaskClick={(task, x, y) => setContextMenu({ task, x, y })}
-          highlightedTaskId={contextMenu?.task?.id || null} />
+          highlightedTaskId={contextMenu?.task?.id || null}
+          onBeforeExport={saveAndValidate} />
 
         {/* Excel table — always visible (used to be a tab) */}
         <div className="mt-6 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden p-4">
-          <FlowTable flow={liveFlow} onSave={handleTableSave} />
+          <FlowTable flow={liveFlow} onUpdateTask={actions.updateTask} />
         </div>
       </main>
 
@@ -196,7 +200,7 @@ export default function FlowEditor({ flow, onBack, onSave }) {
 
       <SaveModal saveModal={saveModal}
         onCancel={() => setSaveModal(null)}
-        onSaveAnyway={() => doSave(liveFlow)} />
+        onSaveAnyway={() => doSave(liveFlow, saveModal?.onSuccess)} />
 
       <ResetAllModal open={resetAllModal}
         onCancel={() => setResetAllModal(false)}

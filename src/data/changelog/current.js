@@ -6,37 +6,18 @@
 export default [
   {
     date: '2026-04-29',
-    title: '任務元件支援 3 行字 + 行距再拉開 + Editor 編號欄拓寬',
+    title: '全頁儲存連動修復 + Excel Tab 內嵌編輯 + 流程圖頂部下載統一（收掉 P / E / M-2）',
     items: [
-      '**緣由**：使用者：「任務內現在可以吃兩行字，但是兩行字行和行之間靠太近了，希望一個任務元件內可以放三行字（約 20-22 個中文字），且行距可以再拉大一點」+「右側拉開的 flow editor 內，現在每個編號會變成兩行，請調整寬度讓編號可以在一行內顯示」。PR #86 縮框後 NODE_H 60 / lineH 24 對 1 行任務名 OK 但 2 行已偏擠、3 行裝不下；TaskCard 編號欄 `w-14` (56px) 不夠裝 `1-0-1-2` (7 字 ×~9.3px ≈ 65px)。',
-      '**問題 1 — 任務元件 3 行字**：`LAYOUT.NODE_H` 60→88（3 行 × lineH 30 + 字高 16 + 上下 padding 6 = 88）；`SvgLabel` 預設 `lineH` 24→**30**（行距明顯拉開）/ `maxChars` 9→**8** / `maxTotal` 16→**22**（每行 8 字 × 3 行 ≤ 24 字，符合 20-22 字目標）。短任務名 1 行 padding 變鬆是設計取捨（避免「動態 NODE_H 依行數變」破壞 layout 對齊）。',
-      '**Layout ripple 安全**：shape vertical center 仍 `NODE_VOFFSET = 76`，shape top/bottom = 32-120；`MAX_SHAPE_BOTTOM_OFFSET = NODE_VOFFSET + DIAMOND_SIZE = 130`（用 diamond 半徑主導，不受 NODE_H 影響），LANE_H 152 - 130 = 22px buffer 不變。`minLaneH(slots)` 沒動，routing slot 位置不變。drawio / PNG 匯出吃 LAYOUT 自動跟。',
-      '**問題 2 — Flow Editor 編號折行**：`src/components/FlowEditor/TaskCard.jsx:40` badge `w-14`(56) → `w-[100px]`（容 ~10 字元，cover `1-0-1-2_g1` 9-10 字元常見閘道編號）；Row 2 spacer `w-[196px]` → `w-[240px]`（連動：drag 20 + badge 100 + role 96 + 3×gap 24 = 240）；number span 加 `whitespace-nowrap` 防止之後 width shrink 重現問題。極端編號 `1-0-1-99_g99`(12 字元) 仍會折，使用者拍板「不為極端 case 犧牲 Name 欄寬度」。',
-      '**動到的檔案**：`src/diagram/constants.js`（NODE_H 一項）/ `src/components/DiagramRenderer/text.jsx`（SvgLabel 三個預設）/ `src/components/FlowEditor/TaskCard.jsx`（badge/spacer 寬度 + nowrap）。`build` 通過。',
-    ],
-  },
-  {
-    date: '2026-04-29',
-    title: '流程圖字級三層化 + 框體精簡 + 行距拉開（收掉 backlog X）',
-    items: [
-      '**緣由**：使用者：「之前那個版面上單純把字放大、格子還是一樣大、字跟框邊界縮短，泳道角色欄位適度變窄，會議室遠看也清楚」+「L4 編號改用 L2 字級，多行文字行距拉開比較友善檢視」。c13 整體 +40% 放大版面後，框與字一起變大，框內 padding 過鬆（NODE_H 72 vs 1 行字 22 → 上下 25px 空白），泳道角色欄位 180px 給 7 字 wrap 預算多數浪費，字級散在 10 處不一致（任務名 16 / 閘道下標 15 / 連線 14 / 編號 13 / tooltip 12 五種混用）。',
-      '**框體尺寸縮減（`src/diagram/constants.js`）**：`NODE_W` 180→156、`NODE_H` 72→60、`COL_W` 224→184、`LANE_H` 196→152、`LANE_HEADER_W` 180→108。1920×1080 螢幕一螢幕可看 5+ 條泳道（原 ~4）。`MAX_SHAPE_BOTTOM_OFFSET` (130) vs LANE_H (152) 仍有 22px buffer，`minLaneH(slots)` 連動算 routing slot 高度不撞。drawio / PNG 匯出檔自動跟隨 LAYOUT，不另改。',
-      '**字級三層化**：L1 大（任務名稱 16 / 泳道角色 18 / 標題 22）/ L2 中（連線 label / Start-End 名 / 閘道下標 / 子流程 / **L4 編號** 全 14）/ L3 小（Start-End 補充 / hover tooltip 全 13）。閘道下標從孤立 15 拉齊 14；tooltip 從 `text-xs`(12) 拉到 `text-[13px]` 補齊一致；L4 編號依使用者要求從 13 升到 14（提升至 L2，task 上方編號可讀性提升）。',
-      '**行距拉開（多行文字檢視優化）**：使用者：「行和行的距離有多行的情況會擠在一起，可以再拉開一點比較友善檢視」。`SvgLabel` lineH 22→24、`StickyHeader` 角色 lineH 22→26、`EventLabel` nameLineH 18→20 / descLineH 17→19、閘道下標 lineH 20→22。',
-      '**wrap maxChars 連動**：框縮後字級不變、wrap 預算同步收，避免文字撞框 — `SvgLabel` 預設 maxChars 10→9、`StickyHeader` 角色 7→4（搭配 LANE_HEADER_W 108）、`EventLabel` 名 14→11 / desc 18→14、閘道下標 10→9。',
-      '**動到的檔案**：`src/diagram/constants.js`（LAYOUT 5 項）/ `src/components/DiagramRenderer/text.jsx`（SvgLabel 預設 + L4Number + EventLabel）/ `StickyHeader.jsx`（角色 wrap）/ `shapes.jsx`（閘道下標）/ `overlays.jsx`（tooltip）。`build` 通過。',
-      '**跨場景縮放**：使用者要的「筆電一螢幕多 vs 會議室遠看」兩場景，**用瀏覽器內建 Ctrl+/Ctrl- 縮放**處理（不自製 zoom slider）。理由：原生快捷鍵已普及、工具列也跟著變大對會議室觸控更友善、零工程量。Phase A baseline 修對後就不需自製。',
-      '**Backlog**：條目 X「字級放大後版面修補」搬到「已完成」。',
-    ],
-  },
-  {
-    date: '2026-04-29',
-    title: 'backlog 合併 + 交接文件 + changelog 凍結 c15',
-    items: [
-      '**緣由**：使用者一次提了 13 條待辦（部分重複舊條），順手請求補交接文件給下個 session。',
-      '**backlog 合併**：6 條真新加入（**X** 字級放大版面修補 / **Y** tooltip 編輯既有閘道分流條件 / **Z** 閘道 fork+merge auto-fill 任務關聯說明 / **AA** 新增任務自動帶入泳道角色 / **AB** 任務連線到閘道自動新增分支欄位[待確認] / **AC** 複製整個 L3 工作流），6 條跟既有條目（F / M-1 / U / V / B / E）合併不重複新增。Phase 2 PR-5/6/7 從「進行中」標 ✅ 已完成；後續批次拆檔表移除已解的 `HelpPanel.jsx` 26KB（PR #84 已抽 helpPanelData）。',
-      '**新檔 `.claude/handover-2026-04-29.md` 7.2KB**：給下個 session 的時點性快照 — 當前 git 狀態、本次完成的 4 commits、新建立的 3 條約定（三件組同步 / 對應實作目錄+符號名 / business-rules.md 不放業務規則）、6 條已知陷阱、優先序建議。下個 session 讀完可以刪。',
-      '**Changelog freeze**：current.js 達 9.97KB（已超 7KB 軟上限），凍結到 `c15.js`（業務規格 refactor + PR-5/6/7 共 4 條）；`index.js` 加 c15 import；current.js 重置只留本 PR 條目。',
+      '**緣由**：使用者：「儲存要整頁一起存，不能下方 excel 編輯後上方的調整都不見了，應該要是不管在哪裡編輯後所有內容都要連動修正（編輯器、流程圖、下方表格）」+「下載 excel 移到匯出 PNG／drawio 旁邊」+「點下載也檢核並儲存，不符合就不能下載」+「Drawer 不可以有第二個儲存按鈕，整頁共用一個」+「編輯方塊高度容納 3 行，4 個關鍵欄位（L4 任務名稱／重點說明／重要輸入／關聯說明）寬度加大」+「table 標題列容許 2 行字，L3 重複欄位變窄」。',
+      '**根因**：FlowTable 用本地 `useState(tasks)` 快照（FlowTable.jsx:53-65），`useEffect` 在 `flow.tasks` 引用變動時把本地 state 強制重置 → 流程圖 / FlowEditor 改 → liveFlow 變 → FlowTable 未存的本地修改被覆蓋；FlowTable 跟 FlowEditor 各有獨立 `hasChanges`，互不同步；儲存按鈕散在 3 處（Header / FlowTable / 對應 export 都不 validate）。',
+      '**P 修復 — FlowTable 轉受控元件**：移除本地 `tasks` / `hasChanges` state，改直接讀 `props.flow.tasks`；EditCell 改 `<textarea rows={3}>` + 內部 local buffer + onBlur 才呼叫 `onUpdateTask`（避免每按一鍵就觸發 layout 重算）；外層 `useEffect` 在 prop value 變動時同步 buffer。FlowEditor 改傳 `actions.updateTask` 為 `onUpdateTask` prop，移除 `handleTableSave`。',
+      '**E（Excel Tab 內嵌編輯）+ Q4 視覺**：cell 從 `<input>` 升級 `<textarea rows={3}>`（容納 3 行 + 使用者可自行 resize-y）；4 個關鍵欄位（L4 任務名稱／重點說明／重要輸入／關聯說明）統一寬度 `min-w-[260px]`，其他編輯欄位 `min-w-[140px]`，唯讀 L3 / L4 編號欄 `max-w-[180px]`；表頭移除 `whitespace-nowrap` 容許 2 行（L3 重複欄位較窄、長 header「任務關聯說明（BPMN Sequence Flow）」自動 wrap）。Header 改成「任務表格 (N 筆)」+ 提示「離開欄位即同步」。',
+      '**M-2 流程圖頂部下載統一**：DiagramRenderer Toolbar 加第 3 顆「↓ 下載 Excel」（藍系第 3 階 #1A3D69 / hover #122A4A），順序 PNG → drawio → Excel；移除 FlowTable 內的「儲存」與「下載 Excel」按鈕；整頁只剩 Header 一顆「儲存」（Drawer audit 確認無獨立儲存按鈕）。',
+      '**儲存即下載 — 三個 export 串接 saveAndValidate**：FlowEditor 抽出 `saveAndValidate(onSuccess?)`，blocking 錯誤直接擋（無法存也無法下載），warning 顯示 modal 由使用者「仍然儲存」決定；handleSave 也走 saveAndValidate；DiagramRenderer 收 `onBeforeExport` prop，PNG / drawio / Excel 三個 handler 都先呼叫 `onBeforeExport(downloadCallback)`。SaveModal state 加 `onSuccess` 欄位讓 warning 路徑也能 chain 下載。',
+      '**動到的檔案**：`src/components/FlowEditor/index.jsx`（saveAndValidate 抽出 / SaveModal callback / props 改名）/ `src/components/FlowTable.jsx`（重寫，轉受控）/ `src/components/DiagramRenderer/index.jsx`（onBeforeExport prop + Excel handler）/ `src/components/DiagramRenderer/Toolbar.jsx`（第 3 顆按鈕）。`build` 通過。',
+      '**現在的同步流向**：流程圖 / Drawer / FlowTable 任一處編輯 → liveFlow 即時更新 → 其他兩處即時反映 ✅；按頂部「儲存」一次存全部 ✅；按 PNG / drawio / Excel 任一下載按鈕 → 先 validate → 通過則存全部 + 下載 / 不通過則 modal 阻擋 ✅。',
+      '**Changelog freeze**：current.js 達 10.4KB（超 7KB 軟上限），凍結到 `c16.js`（PR #85 backlog 合併 + PR #86 字級三層化 + PR #87 NODE_H 88 共 3 條）；`index.js` 加 c16 import；current.js 重置只留本 PR 條目。',
+      '**Backlog**：條目 **P** / **E** / **M-2** 三條一起標完成。',
     ],
   },
 ];
