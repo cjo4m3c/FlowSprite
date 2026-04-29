@@ -11,6 +11,7 @@
 
 ## 規格已明確、可排程
 
+- **W. 泳道高度調整視覺改動**（使用者：「接下來有個任務是要調整視覺呈現，可能跟泳道高度調整有關」） — 動到的位置：`src/diagram/constants.js` `LAYOUT.LANE_H`/`NODE_H` 常數、`src/diagram/layout/helpers.js` `minLaneH(n)` / `ROUTE_SLOT_H` / `ROUTE_BOTTOM_PAD` 槽位、`src/diagram/layout/computeLayout.js` 末段 `laneTopY` / `laneHeights` 算法、`DiagramRenderer/index.jsx` + `StickyHeader.jsx` 渲染同步、`drawioExport.js` 吃 `laneHeights`。若做「使用者手動指定某泳道高度」需在 `flow.roles[i]` 加新欄位（例 `customHeight`），computeLayout 取 override 蓋過動態算出的值。**跟 Phase 2 抽出的 3 個 selector（getL4Index / getL3Summary / getSwimlaneRows）幾乎無關**——lane 高度是 routing 算法衍生狀態，不是 model 層的純資料 selector。
 - **U. 插入閘道操作邏輯拉齊**（使用者：「拉齊插入閘道的操作邏輯（現在圖上是插入閘道、編輯器是序列規則）」）— `DiagramRenderer` ContextMenu「插入閘道」與 `FlowEditor` 編輯器內的插入流程不一致，要統一
 - **V. 儲存事件閃亮提醒**（使用者：「新增儲存事件閃亮提醒」）— 儲存按鈕被按下後加 logo 閃光 / 按鈕短暫變綠等視覺回饋（取代原 J「儲存提醒優化」的待選方向）
 - **C. Phase 3.5 gateway obstacle avoidance**（`src/diagram/layout/`）— 閘道作為跨列 forward obstacle 時走 vertical-detour
