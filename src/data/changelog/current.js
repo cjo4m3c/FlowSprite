@@ -6,6 +6,21 @@
 export default [
   {
     date: '2026-04-30',
+    title: '外部關係人互動元件 — 角色驅動的自動切換 + 灰底配色 #A0A0A0',
+    items: [
+      '**緣由**：使用者：「我希望下一步來優化全站「外部關係人互動」的規則。規則是在外部角色泳道做的「任務」，都要使用「外部關係人互動」這個元件，不能使用原本的「L4任務」元件...被移到外部角色泳道的任務，要自動使用「外部關係人互動」這個元件，換到內部角色時會自動變回「L4任務」元件，其他閘道、開始結束、L3元件則適用於所有泳道」+「依照你的建議方案執行，excel匯入的角色默認為內部角色，使用者自行更改即可」。',
+      '**Step 1 — 純函式 helpers（`elementTypes.js`）**：(a) `applyRoleChange(task, newRoleId, roles)` 處理「任務換泳道」 — 若 task 是 lane-sensitive（`type === \'task\'` 且 shapeType 屬 task / interaction），依新泳道的 role.type 自動 sync shapeType（external → interaction、internal → task）。閘道 / 開始 / 結束 / L3 不動。 (b) `syncTasksToRoles(tasks, roles)` 是純函式 cascade — 給定任務 + 角色清單，回傳所有任務 shapeType 已 sync 的新陣列，idempotent。 (c) `isLaneSensitive(task)` private helper 判斷 task 是否該 lane-driven。',
+      '**Step 2 — 觸發點**：(1) `TaskCard.jsx` 角色 select onChange → `applyRoleChange`；(2) `ContextMenu/index.jsx` 角色 select onChange → 同；(3) `DrawerContent.jsx` 角色泳道列表 type select onChange → cascade `syncTasksToRoles`（一次 sync 所有該泳道任務）；(4) `Wizard.jsx` Step 2 角色 type 變更 → 同 cascade；(5) `storage.js` `migrateFlow` 載入時一次性 fixup（idempotent — 已 sync 過 return same ref）。',
+      '**Step 3 — Excel 匯入維持原行為**：parser 不動，預設「內部角色 + L4 任務」。使用者匯入後若要改成外部，手動把該泳道 role.type 改成 external 即觸發 cascade。',
+      '**Step 4 — 視覺**：`diagram/constants.js` `INTERACTION_FILL` 從 `#D1D5DB` → `#A0A0A0`（使用者規範灰底）。',
+      '**Step 5 — 拿掉 validation rule 3e**：原本「shapeType=interaction 但 role=internal 跳 warning」，現在 auto-sync 後永遠不會發生，註解保留說明歷史。helpPanelData VALIDATION 對應條目同步移除。',
+      '**Step 6 — 文件同步**：`docs/business-spec.md §3` 表格「互動任務」改名「外部關係人互動」+ 灰底 + auto-sync 說明；新增 §3.1 細則章節（觸發表 / 範圍限制 / Excel 匯入 / 對應實作）；`helpPanelData.js` ELEMENTS 對應條目改寫。',
+      '**動到的檔案（10 個）**：`src/utils/elementTypes.js`（+helpers）/ `src/utils/storage.js`（+load fixup）/ `src/components/FlowEditor/TaskCard.jsx`（role select）/ `src/components/ContextMenu/index.jsx`（同）/ `src/components/FlowEditor/DrawerContent.jsx`（cascade）/ `src/components/Wizard.jsx`（cascade）/ `src/diagram/constants.js`（color）/ `src/model/validation.js`（移 3e）/ `src/data/helpPanelData.js`（ELEMENTS + VALIDATION）/ `docs/business-spec.md` §3 + 3.1 / `src/data/changelog/current.js`（本條）。`build` 通過。',
+      '**驗證情境**：(a) TaskCard 把任務從內部泳道角色換到外部角色 → shapeType 自動變 interaction，圖上底色變灰 ✓ (b) 換回內部角色 → 變回 task 白底 ✓ (c) DrawerContent 把整個泳道 role.type 從 internal 翻成 external → 該泳道所有任務 cascade 變 interaction ✓ (d) 重新整理頁面 → 載入時 fixup 確保 mismatch 修正 ✓ (e) 閘道 / 開始 / 結束 / L3 在外部泳道不被動 ✓ (f) Excel 匯入後手動改 role.type → cascade 觸發 ✓ (g) 儲存不再跳「外部互動建議放外部角色泳道」warning ✓',
+    ],
+  },
+  {
+    date: '2026-04-30',
     title: '編輯器 TaskCard：「元件類型」label 字級放大對齊「下一步」/「任務重點說明」',
     items: [
       '**緣由**：使用者：「我希望在編輯器每個編輯區塊中，「元件類型」的字級變得跟「下一步」「任務重點說明」一樣大」。Row 2 的 label 用 `text-xs text-gray-500`，跟其他 row 的 label（`text-sm text-gray-600`）視覺上比例不一致 — 看起來像「附屬欄位」而不是同等重要的元件選擇。',

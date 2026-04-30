@@ -61,10 +61,10 @@ export const ELEMENTS = [
     purpose: '一般業務步驟。編號 `L3-順號`（例 `1-1-5-1`），**只有一般任務會佔用流水號**（開始 / 結束 / 閘道都不佔）。流程設定選「序列流向」。',
   },
   {
-    type: '互動任務',
-    shape: '圓角矩形（淺紫底）',
-    color: '#EDE9FE / 藍框',
-    purpose: '涉及系統互動或跨角色協作的任務節點，流程設定同 L4 任務。',
+    type: '外部關係人互動',
+    shape: '圓角矩形（灰底）',
+    color: '#A0A0A0 / 灰框',
+    purpose: '外部角色泳道專用的任務元件，外觀與 L4 任務相同但底色為灰色。**自動規則（2026-04-30）**：任務移到外部角色泳道時自動變外部關係人互動；移回內部角色泳道自動變回 L4 任務（其他元件如閘道 / 開始 / 結束 / L3 不受影響，可放任何泳道）。',
   },
   {
     type: 'L3 活動（子流程調用）',
@@ -132,11 +132,6 @@ export const VALIDATION = [
     tier: 'warning',
     rule: '每個節點都必須被連接（除開始外）',
     detail: '「流程開始」節點以外，每個節點都應該被至少一條連線指向。孤立節點跳 warning。',
-  },
-  {
-    tier: 'warning',
-    rule: '外部互動建議放外部角色泳道',
-    detail: '若任務 `shapeType=interaction` 但 roleId 對應的 role.type=`internal`，儲存時跳 warning（不擋）。建議改放外部角色泳道。',
   },
   {
     tier: 'import',

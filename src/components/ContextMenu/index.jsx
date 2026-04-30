@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { applyRoleChange } from '../../utils/elementTypes.js';
 import {
   L3ActivitySubForm,
   ConnectionSubForm,
@@ -185,7 +186,7 @@ export default function ContextMenu({
         <label className="flex flex-col gap-1">
           <span className="text-xs text-gray-500">角色</span>
           <select value={task.roleId || ''}
-            onChange={(e) => onUpdate({ ...task, roleId: e.target.value })}
+            onChange={(e) => onUpdate(applyRoleChange(task, e.target.value, roles))}
             className="px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-400">
             <option value="">（未指定）</option>
             {(roles || []).filter(r => r.name).map(r => (

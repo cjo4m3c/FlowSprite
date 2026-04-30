@@ -107,11 +107,28 @@ X-Y-Z-0  →  X-Y-Z-0_g  →  X-Y-Z-1
 | 結束事件 | 圓形（實心深色） | `#111827` 填色 | 流程終點，每張圖至少有一個 |
 | 流程斷點 | 圓形（實心，含 `‖` 符號） | `#374151` | 非正常結束（等待外部事件、流程暫停）。可選填下一步及斷點原因 |
 | L4 任務 | 圓角矩形 | `#DBEAFE` 藍框 | 一般業務步驟，**佔用流水順號** |
-| 互動任務 | 圓角矩形 | `#EDE9FE` 紫底藍框 | 涉及系統互動或跨角色協作的任務 |
+| 外部關係人互動 | 圓角矩形 | `#A0A0A0` 灰底 | 外部角色泳道專用任務元件。外觀同 L4 任務但底色灰；**移到外部泳道自動變此元件，移回內部泳道自動變回 L4 任務**（2026-04-30 起。其他元件不受影響） |
 | L3 活動（子流程調用） | 書端矩形（左右垂直分隔線） | `#FFFFFF` 深灰框 | 調用另一個 L3 活動。**圖上頂端顯示所調用的 L3 編號**取代本任務的 L4 編號 |
 | 排他閘道（XOR） | 菱形（內含 `×`） | `#FEF3C7` 橙框 | 條件分支，每次只走一個路徑 |
 | 並行閘道（AND） | 菱形（內含 `+`） | `#D1FAE5` 綠框 | 並行分支，同時啟動所有路徑（**不評估條件**） |
 | 包容閘道（OR） | 菱形（內含 `○`） | `#FEF9C3` 黃框 | 包容分支，獨立評估每個條件，可同時觸發 1~N 條 |
+
+### 3.1 外部關係人互動 — 角色驅動的自動切換（2026-04-30）
+
+外部關係人互動元件由**泳道角色**驅動，不需使用者手動選：
+
+| 觸發 | 結果 |
+|---|---|
+| 任務移到 `role.type === 'external'` 泳道 | `shapeType` 自動 = `interaction` |
+| 任務移回 `role.type === 'internal'` 泳道 | `shapeType` 自動 = `task` |
+| 角色泳道 `internal ↔ external` 切換 | 該泳道內所有 `type === 'task'` 任務一起 cascade-sync |
+| 載入舊 localStorage 資料 | `storage.migrateFlow` 一次性 fixup |
+
+**範圍限制**：只有 `type === 'task'` 才會 lane-sensitive。閘道 / 開始 / 結束 / L3 活動可放任何泳道，sync 不動它們。
+
+**Excel 匯入**：parser 預設角色為內部 + 任務為一般 L4 任務。使用者匯入後手動把該泳道角色改成外部，即觸發 cascade-sync 把該泳道任務全部變外部互動。
+
+**對應實作**：`src/utils/elementTypes.js`（`applyRoleChange` / `syncTasksToRoles` / `isLaneSensitive`）、`src/components/FlowEditor/TaskCard.jsx`（角色 select 用 helper）、`src/components/ContextMenu/index.jsx`（同）、`src/components/FlowEditor/DrawerContent.jsx` + `src/components/Wizard.jsx`（角色 type 變更 cascade）、`src/utils/storage.js`（load 時 fixup）。
 
 **對應實作**：`src/diagram/`（`constants` 顏色 / 尺寸）、`src/components/DiagramRenderer/`（`shapes` 5 種元件繪製）、`src/components/`（`HelpPanel` ELEMENTS array）
 
