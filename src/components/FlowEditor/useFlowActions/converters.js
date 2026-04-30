@@ -15,7 +15,9 @@ export function makeConverterActions({ liveFlow, patch }) {
   //   - start: takes anchor's downstream as its outgoing
   //   - end / breakpoint: no outgoing; anchor's downstream is dropped
   //   - interaction: same as addTaskAfter (anchor → new → old downstream)
-  function addOtherAfter(anchorId, kind) {
+  // `name` is optional; when provided it's set on the new task so the editor's
+  // InsertPicker can ship "name + type" together in a single create.
+  function addOtherAfter(anchorId, kind, name = '') {
     const idx = liveFlow.tasks.findIndex(t => t.id === anchorId);
     if (idx < 0) return;
     const anchor = liveFlow.tasks[idx];
@@ -46,7 +48,7 @@ export function makeConverterActions({ liveFlow, patch }) {
     } else {
       return;
     }
-    const newTask = makeTask(overrides);
+    const newTask = makeTask({ ...overrides, name: name || '' });
     const rewired = liveFlow.tasks.map(t =>
       t.id === anchorId ? { ...t, nextTaskIds: [newTask.id] } : t
     );

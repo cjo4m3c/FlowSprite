@@ -184,7 +184,7 @@ export default function FlowEditor({ flow, onBack, onSave }) {
           onPatch={patch}
           onUpdateTask={actions.updateTask} onRemoveTask={actions.removeTask}
           onAddTaskAt={(index) => {
-            // Click-to-insert at exact slot.
+            // Click-to-insert plain L4 task at exact slot.
             //   index 0           → before first task   = addTaskBefore(tasks[0])
             //   index N (1..len)  → after tasks[N-1]    = addTaskAfter(tasks[N-1])
             //   index >= len      → append at end       = addTask
@@ -193,13 +193,39 @@ export default function FlowEditor({ flow, onBack, onSave }) {
             else if (index >= tasks.length) actions.addTask();
             else actions.addTaskAfter(tasks[index - 1].id);
           }}
-          onAddInteraction={() => {
-            // Append a task with shapeType=interaction at end of list. Reuses
-            // addOtherAfter('interaction') if there's an anchor; falls back to
-            // addTask + post-update for the empty-flow case.
+          onAddOtherAt={(index, kind, name) => {
+            // start / end / interaction at index. Internal addOtherAfter
+            // only supports "after anchor", so index 0 falls back to
+            // addOtherAfter(tasks[0]) — close enough for legacy "before
+            // first" until we wire a true addOtherBefore variant.
             const tasks = liveFlow.tasks || [];
-            if (tasks.length > 0) actions.addOtherAfter(tasks[tasks.length - 1].id, 'interaction');
-            else actions.addTask();
+            const anchorId = index <= 0
+              ? tasks[0]?.id
+              : index >= tasks.length
+                ? tasks[tasks.length - 1]?.id
+                : tasks[index - 1]?.id;
+            if (!anchorId) return;
+            actions.addOtherAfter(anchorId, kind, name || '');
+          }}
+          onAddL3At={(index, l3Number, l3Name) => {
+            const tasks = liveFlow.tasks || [];
+            const anchorId = index <= 0
+              ? tasks[0]?.id
+              : index >= tasks.length
+                ? tasks[tasks.length - 1]?.id
+                : tasks[index - 1]?.id;
+            if (!anchorId) return;
+            actions.addL3ActivityAfter(anchorId, l3Number, l3Name);
+          }}
+          onAddGatewayAt={(index, gatewayType, target1, target2, label1, label2) => {
+            const tasks = liveFlow.tasks || [];
+            const anchorId = index <= 0
+              ? tasks[0]?.id
+              : index >= tasks.length
+                ? tasks[tasks.length - 1]?.id
+                : tasks[index - 1]?.id;
+            if (!anchorId) return;
+            actions.insertGatewayAfter(anchorId, gatewayType, target1, target2, label1, label2);
           }} />
       </RightDrawer>
 
