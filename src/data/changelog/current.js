@@ -6,6 +6,26 @@
 export default [
   {
     date: '2026-04-29',
+    title: 'PR-2 編輯器：TaskCard 顯示衍生關聯說明 + 修 removeTask wiring 重連',
+    items: [
+      '**緣由**：PR-1 收尾後續：(1) 編輯器 TaskCard 看不到自動產生的「任務關聯說明」文字（FlowTable 跟流程圖看得到），使用者誤以為「沒自動補」(2) 刪除中間 task 時前後 wiring 沒重連，產生 dangling reference。',
+      '**Step 1 — TaskCard 顯示衍生 flowAnnotation**：`TaskCard.jsx` import `formatConnection`，在 ConnectionSection 區塊下方加一行衍生「關聯說明」preview（5-col layout 對齊：drag spacer + 「關聯說明」label w-[120px] 對齊 badge col + 文字 flex-1 對齊 name col + actions col 留空）。樣式用 `italic text-gray-500` 表示「系統自動產生、不可編輯」。',
+      '**範例顯示**：使用者在編輯器看到自己的 task：',
+      '  • L4 任務：`關聯說明 | 序列流向 1-1-1-2`',
+      '  • 排他閘道：`關聯說明 | 條件分支至 1-1-1-3（通過）、1-1-1-4（不通過）`',
+      '  • 合併目標：`關聯說明 | 並行合併 1-1-1-3、1-1-1-4，序列流向 1-1-1-5`',
+      '  • 子流程：`關聯說明 | 調用子流程 5-3-2，返回後序列流向 1-1-1-3`',
+      '  • 開始事件：`關聯說明 | 流程開始，序列流向 1-1-1-1`',
+      '  • 結束事件：`關聯說明 | 流程結束`（hidden if empty）',
+      '**Step 2 — `removeTask` wiring 重連**：原本只清 `connectionOverrides`，沒處理 `nextTaskIds` / gateway `conditions[].nextTaskId`。改成：找到被刪 task 的 passthrough downstream（gateway 取第一個有效 condition target / 一般 task 取第一個 nextTaskId），所有 upstream 對被刪 task 的指向**自動 redirect 到 passthrough**。例：`A → B → C` 刪 B → A.nextTaskIds 從 [B] 變 [C]，變 `A → C`。閘道 conditions 同樣處理。沒 passthrough 時上游 nextTaskIds 直接 strip 該 entry（dedup 避免重複）。',
+      '**Step 3 — `removeTask` strip stored l4Number**：刪除後 strip 所有 stored l4Number 讓 `computeDisplayLabels` 重排，避免「順號 1, 2, 4, 5」這種跳號（被刪 3 後）。跟 `addTaskAfter` 一樣的策略。',
+      '**驗證情境**：(a) `A → B → C` 刪 B → 變 `A → C`，編號順序連續 ✓ (b) 閘道 G 條件指向 X，刪 X → G 條件指向 X 的下游 Y ✓ (c) 沒下游的 task 被刪 → 上游 nextTaskIds 該 entry 移除（不會 dangling）✓',
+      '**動到的檔案（3 個）**：`src/components/FlowEditor/TaskCard.jsx`（+formatConnection import / annotation preview 區塊）/ `src/components/FlowEditor/useFlowActions.js`（removeTask 全面重寫加 passthrough rewire + strip l4Number）/ `src/data/changelog/current.js`（本條）。`build` 通過。',
+      '**「整合所有操作」epic 收尾**：PR-1 (#109) InsertPicker + PR-2（本 PR）顯示衍生說明 + 修 wiring。需求 1-7 全部完成。',
+    ],
+  },
+  {
+    date: '2026-04-29',
     title: '編輯器 InsertPicker：拉齊新增元件 UX + 多 start/end 改 warning（採方案 A）',
     items: [
       '**緣由**：使用者：「編輯器要可以選元件 + 自動補關聯說明文字，跟流程圖操作方式一樣，不要兩套邏輯」+「接受多個開始/結束事件，但儲存時跳提醒」+「採方案 A inline expand picker」。',

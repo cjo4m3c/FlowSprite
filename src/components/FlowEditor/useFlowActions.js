@@ -188,17 +188,64 @@ export function useFlowActions({ liveFlow, patch }) {
   // this file stays under the 20KB hard limit.
   function removeTask(id) {
     if (liveFlow.tasks.length <= 1) return;
-    // PR H: drop the task, AND clear any other task's connectionOverrides
-    // key that points at the removed task. Gateway overrides are keyed by
-    // condId (not targetId) so they're unaffected by this deletion — only
-    // regular tasks need the cleanup.
+    const removed = liveFlow.tasks.find(t => t.id === id);
+    if (!removed) return;
+
+    // Determine the "passthrough" downstream the upstream sources should
+    // reconnect to. If the removed task was a gateway, take its first valid
+    // condition target; otherwise its first nextTaskId. Falls back to null
+    // (sources end up with empty downstream — flagged later by validation).
+    const passthroughId = removed.type === 'gateway'
+      ? ((removed.conditions || []).find(c => c.nextTaskId)?.nextTaskId || null)
+      : ((removed.nextTaskIds || []).find(Boolean) || null);
+
     const cleaned = liveFlow.tasks.filter(t => t.id !== id).map(t => {
-      if (t.type === 'gateway' || !t.connectionOverrides?.[id]) return t;
-      const newOv = { ...t.connectionOverrides };
-      delete newOv[id];
-      return { ...t, connectionOverrides: newOv };
+      let next = t;
+
+      // 1. Strip stale connectionOverrides keyed by removed id (PR H).
+      //    Gateway overrides are keyed by condId so they're unaffected;
+      //    only regular tasks need this cleanup.
+      if (t.type !== 'gateway' && t.connectionOverrides?.[id]) {
+        const newOv = { ...t.connectionOverrides };
+        delete newOv[id];
+        next = { ...next, connectionOverrides: newOv };
+      }
+
+      // 2. Rewire wiring 2026-04-29: if upstream task points at the removed
+      //    task, redirect to the passthrough so A→B→C becomes A→C when B
+      //    is deleted.
+      if (t.type === 'gateway') {
+        const conds = (t.conditions || []).map(c =>
+          c.nextTaskId === id ? { ...c, nextTaskId: passthroughId || '' } : c
+        );
+        next = { ...next, conditions: conds };
+      } else {
+        const oldNexts = next.nextTaskIds || [];
+        if (oldNexts.includes(id)) {
+          // Replace the removed id with the passthrough; if the passthrough
+          // is null, drop the entry entirely (no orphan reference left).
+          const replaced = oldNexts.flatMap(n => {
+            if (n !== id) return [n];
+            return passthroughId ? [passthroughId] : [];
+          });
+          // De-dup in case the passthrough was already a peer target.
+          const deduped = replaced.filter((n, i, arr) => arr.indexOf(n) === i);
+          next = { ...next, nextTaskIds: deduped };
+        }
+      }
+
+      return next;
     });
-    patch({ tasks: cleaned });
+
+    // Strip stored l4Number after a removal so computeDisplayLabels
+    // re-sequences from 1 (avoids gaps like "1, 2, 4, 5" after deleting 3).
+    // Mirrors what addTaskAfter / addTaskBefore do on insertion.
+    const renumbered = cleaned.map(t => {
+      if (!t.l4Number) return t;
+      const { l4Number, ...rest } = t;
+      return rest;
+    });
+    patch({ tasks: renumbered });
   }
 
   // Merge a partial endpoint override into task.connectionOverrides. Called
