@@ -183,7 +183,6 @@ export default function FlowEditor({ flow, onBack, onSave }) {
           taskDrag={taskDrag} roleDrag={roleDrag}
           onPatch={patch}
           onUpdateTask={actions.updateTask} onRemoveTask={actions.removeTask}
-          onAddTask={actions.addTask}
           onAddTaskAt={(index) => {
             // Click-to-insert at exact slot.
             //   index 0           → before first task   = addTaskBefore(tasks[0])

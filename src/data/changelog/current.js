@@ -6,6 +6,18 @@
 export default [
   {
     date: '2026-04-29',
+    title: '編輯器：InsertSlot 涵蓋首尾、移除「新增任務/角色」按鈕、修拖曳只能拖第一個 row 的 bug',
+    items: [
+      '**緣由**：使用者：「(1) 設定流程：InsertSlot 在第一個 / 最後一個編輯區塊前後也可用，移除「新增任務」按鈕 (2) 設定泳道角色：現在只有第一個 row 可拖，其他不行 (3) 設定泳道角色：跟 (1) 一樣 InsertSlot 涵蓋首尾、移除「新增角色」按鈕」。',
+      '**Step 1（修需求 2 root cause）— 拆 dragReorder rowProps / handleProps**：原本 `useDragReorder.rowProps(i)` 把 `draggable=true` + `onDragStart` 套整個 row。HTML5 規範：含 `<input>` / `<select>` 的 row 套 draggable，input 區域會吞掉 drag 事件 — 使用者點 input 拖會無效，只有點 row 邊緣才能 trigger。第一個 row 視覺位置最上、滑鼠習慣容易點到 row 上邊緣空白；其他 row 則只有 input 區域可點，所以「拖不動」。**正解**：`rowProps(i)` 拆出 row-level events（onDragOver / onDrop / onDragEnd），`handleProps(i)` 只回 `{ draggable: true, onDragStart }`，套到 DragHandle 上 — drag 只從 DragHandle 啟動，避開 input 衝突，所有 row 都能拖。',
+      '**Step 2 — TaskCard 對應改**：加 `dragHandleProps` prop，DragHandle 元件改成接 `{...props}` 並 spread 到 root div。`<DragHandle {...(dragHandleProps || {})} />`。',
+      '**Step 3 — task tab：InsertSlot 涵蓋首尾**：原本 list 開頭已有 InsertSlot；list 結尾沒有（PR #103 條件 `i < length - 1` 排除了最後一個）。改成每個 task 後都接 InsertSlot（包含最後一個）。**移除上方「+ 新增任務（加到最後）」按鈕**（InsertSlot 已涵蓋）；保留「+ 新增外部互動」（不同 type，InsertSlot 不涵蓋）。',
+      '**Step 4 — role tab：InsertSlot 涵蓋首尾 + DragHandle 套 handleProps**：移除 PR #103 加的「+ 新增角色（加到最後）」按鈕；每個 role 後都接 InsertSlot。`<DragHandle {...roleHandleProps(i)} />` 把 drag start 移到 DragHandle 上 — 解 #2 拖曳問題。',
+      '**動到的檔案（4 個）**：`src/components/dragReorder.jsx`（拆 rowProps/handleProps + DragHandle 接 props）/ `src/components/FlowEditor/TaskCard.jsx`（加 dragHandleProps prop）/ `src/components/FlowEditor/DrawerContent.jsx`（兩 tab 重排，trailing InsertSlot + 移按鈕 + DragHandle handleProps）/ `src/components/FlowEditor/index.jsx`（移 onAddTask prop wiring）/ `src/data/changelog/current.js`（本條）。`build` 通過。',
+    ],
+  },
+  {
+    date: '2026-04-29',
     title: '操作體驗 8 項：角色 InsertSlot、role 寬度+對齊、下載文字、Tooltip 去 icon、LegendModal、卡片對齊',
     items: [
       '**緣由**：使用者批次 8 項：(1) 設定泳道角色加 InsertSlot + 移除底部新增按鈕 (2) 角色下拉拉寬 (3) 任務名稱 vs 序列流向左對齊 (4) Header 下載文字統一 (5) 首頁卡片下載文字統一 (6) Tooltip 內選單去 icon (7) LegendModal 去重複框 (8) 卡片角色固定 2 行 + 檢查對齊問題。',

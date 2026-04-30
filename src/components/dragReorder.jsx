@@ -5,7 +5,7 @@ import { useState } from 'react';
  *
  * Wizard (roles list) and FlowEditor (tasks list) share this identical
  * implementation. Parent passes `items` + an `onReorder(nextItems)` callback;
- * hook returns `{ dragIdx, overIdx, dropAfter, rowProps }`.
+ * hook returns `{ dragIdx, overIdx, dropAfter, rowProps, handleProps }`.
  *
  * Drop-position semantics (improved 2026-04-27):
  *   onDragOver compares mouse Y to the row's vertical midpoint and reports
@@ -16,7 +16,14 @@ import { useState } from 'react';
  *   slot ("between rows") rather than a whole-row highlight that's
  *   ambiguous about above-vs-below.
  *
- * Spread `rowProps(i)` onto the draggable row's root element.
+ * Drag start vs drop target split (2026-04-29):
+ *   `rowProps(i)` returns ONLY the row-level handlers (onDragOver / onDrop /
+ *   onDragEnd) — meant for the row's outer container. `handleProps(i)`
+ *   returns the actual draggable trigger (`draggable=true` + onDragStart),
+ *   meant for the DragHandle element. This split avoids the HTML5 quirk
+ *   where input/select fields inside a draggable row swallow drag events,
+ *   making rows look "un-draggable" except at the row's edges. Now drag
+ *   only starts from the DragHandle, so all rows behave consistently.
  */
 export function useDragReorder(items, onReorder) {
   const [dragIdx, setDragIdx] = useState(null);
@@ -31,8 +38,6 @@ export function useDragReorder(items, onReorder) {
   function onDragOver(e, i) {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-    // Bisect the row vertically: mouse above midpoint → drop "above" this
-    // row; below midpoint → drop "below" (i.e. before row i+1).
     const rect = e.currentTarget.getBoundingClientRect();
     const after = e.clientY > rect.top + rect.height / 2;
     if (i !== overIdx) setOverIdx(i);
@@ -41,9 +46,7 @@ export function useDragReorder(items, onReorder) {
   function onDrop(e, i) {
     e.preventDefault();
     if (dragIdx !== null) {
-      // Compute target slot. dropAfter on row i means insert at (i+1).
       let target = dropAfter ? i + 1 : i;
-      // After splicing out dragIdx, every index above it shifts down by 1.
       if (dragIdx < target) target -= 1;
       if (target !== dragIdx) {
         const next = [...items];
@@ -55,17 +58,33 @@ export function useDragReorder(items, onReorder) {
     setDragIdx(null); setOverIdx(null); setDropAfter(false);
   }
   function onDragEnd() { setDragIdx(null); setOverIdx(null); setDropAfter(false); }
+  // Row-level handlers — receives the drop, doesn't initiate drag.
   function rowProps(i) {
-    return { draggable: true, onDragStart: e => onDragStart(e, i),
-      onDragOver: e => onDragOver(e, i), onDrop: e => onDrop(e, i), onDragEnd };
+    return {
+      onDragOver: e => onDragOver(e, i),
+      onDrop:    e => onDrop(e, i),
+      onDragEnd,
+    };
   }
-  return { dragIdx, overIdx, dropAfter, rowProps };
+  // DragHandle handlers — initiates the drag. Spread onto the DragHandle's
+  // root element (inside <DragHandle {...handleProps(i)} />).
+  function handleProps(i) {
+    return {
+      draggable: true,
+      onDragStart: e => onDragStart(e, i),
+    };
+  }
+  return { dragIdx, overIdx, dropAfter, rowProps, handleProps };
 }
 
-/** Six-dot drag affordance icon used by every draggable row. */
-export function DragHandle() {
+/** Six-dot drag affordance icon used by every draggable row.
+ *  Pass the parent's `handleProps(i)` so this element is the draggable
+ *  trigger (draggable=true + onDragStart), keeping the rest of the row
+ *  free for normal input/select interaction. */
+export function DragHandle(props) {
   return (
-    <div className="flex items-center justify-center w-5 flex-shrink-0 cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 select-none">
+    <div {...props}
+      className="flex items-center justify-center w-5 flex-shrink-0 cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 select-none">
       <svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor">
         <circle cx="3" cy="3"  r="1.4"/><circle cx="7" cy="3"  r="1.4"/>
         <circle cx="3" cy="8"  r="1.4"/><circle cx="7" cy="8"  r="1.4"/>

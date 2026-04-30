@@ -4,7 +4,7 @@ import { DragHandle } from '../dragReorder.jsx';
 import { CONNECTION_TYPES, SHAPE_TYPES, CONN_BADGE, CONN_ROW_BG, applyConnectionType } from '../../utils/taskDefs.js';
 
 // ── TaskCard ────────────────────────────────────────
-export default function TaskCard({ task, roles, allTasks, displayLabels, onUpdate, onRemove, canRemove, dragHandlers, isDragging, dropEdge }) {
+export default function TaskCard({ task, roles, allTasks, displayLabels, onUpdate, onRemove, canRemove, dragHandlers, dragHandleProps, isDragging, dropEdge }) {
   const ct = task.connectionType || 'sequence';
   const badge = CONN_BADGE[ct];
   const num = displayLabels[task.id];
@@ -34,7 +34,7 @@ export default function TaskCard({ task, roles, allTasks, displayLabels, onUpdat
 
       {/* Row 1: drag + badge + role + name (wide) + actions */}
       <div className="flex items-center gap-2 px-2 pt-2 min-w-0">
-        <DragHandle />
+        <DragHandle {...(dragHandleProps || {})} />
 
         {/* Badge / number */}
         <div className="w-[120px] flex-shrink-0 flex items-center">

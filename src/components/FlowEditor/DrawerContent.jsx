@@ -1,4 +1,4 @@
-import { Fragment, useState } from 'react';
+import { Fragment } from 'react';
 import TaskCard from './TaskCard.jsx';
 import { DragHandle } from '../dragReorder.jsx';
 import { makeRole } from '../../utils/taskDefs.js';
@@ -18,7 +18,7 @@ function DropLine() {
 // during drag-to-reorder). InsertSlot is point-and-click: hover the gap, see
 // a blue line + button, click to add a new row at that exact position.
 // Container is always 16px high so layout doesn't shift; line + button fade
-// in via group-hover. `label` is the button text (e.g. "+ 插入任務").
+// in via group-hover.
 function InsertSlot({ onClick, label, title }) {
   return (
     <div className="relative h-4 -my-1 group">
@@ -39,17 +39,23 @@ function InsertSlot({ onClick, label, title }) {
  * "設定泳道角色" (role rows). Drag-reorder handlers come from the parent's
  * useDragReorder hook instances (one per list).
  *
- * UX:
- *  - "+ 新增任務" button now sits at the TOP of the task list (was bottom)
- *  - InsertSlot between every adjacent pair of TaskCards lets the user
- *    click to insert at that exact position (separate from drag-to-reorder)
- *  - Both task drag and role drag show the same DropLine indicator
- *    between rows during a drag operation
+ * UX (2026-04-29 rev):
+ *  - Both tabs use hover-between-rows InsertSlot exclusively for adding
+ *    rows. Top "+ 新增任務 / 新增角色" buttons removed — InsertSlot covers
+ *    every position (before first row, between rows, after last row).
+ *  - Task tab keeps the dedicated "+ 新增外部互動" button (a different
+ *    type from a regular task; InsertSlot only adds regular tasks).
+ *  - Drag start lives on the DragHandle (handleProps); the row only
+ *    handles drop events (rowProps). This avoids the HTML5 issue where
+ *    draggable=true on a row containing input/select fields swallows
+ *    drag attempts unless the user clicks at row edges. Now drag is
+ *    triggered exclusively from the DragHandle, so all rows behave
+ *    consistently.
  */
 export function DrawerContent({ activeTab, liveFlow, displayLabels,
-  taskDrag, roleDrag, onPatch, onUpdateTask, onRemoveTask, onAddTask, onAddTaskAt, onAddInteraction }) {
+  taskDrag, roleDrag, onPatch, onUpdateTask, onRemoveTask, onAddTaskAt, onAddInteraction }) {
   if (activeTab === 'flow') {
-    const { dragIdx, overIdx, dropAfter, rowProps } = taskDrag;
+    const { dragIdx, overIdx, dropAfter, rowProps, handleProps } = taskDrag;
     const dropTargetSlot = (dragIdx === null || overIdx === null) ? null
       : (dropAfter ? overIdx + 1 : overIdx);
     const adjacentTopIdx    = dropTargetSlot !== null ? dropTargetSlot - 1 : null;
@@ -67,27 +73,20 @@ export function DrawerContent({ activeTab, liveFlow, displayLabels,
     const isDragging = dragIdx !== null;
     return (
       <div>
-        {/* Add buttons pinned to the top. Two entry points:
-            - 新增任務: regular task at end of list
-            - 新增外部互動: task with shapeType=interaction (purple/gray)
-              Per business spec, interactions belong on external-role lanes;
-              save validation warns (non-blocking) if dropped on internal lane. */}
-        <div className="flex gap-2 mb-3">
-          <button onClick={onAddTask}
-            className="flex-1 py-2 text-base border border-dashed border-blue-400 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors">
-            + 新增任務（加到最後）
-          </button>
+        {/* "新增外部互動" stays — distinct task type, not covered by
+            InsertSlot's plain-task action. */}
+        <div className="mb-3">
           <button onClick={onAddInteraction}
-            className="flex-1 py-2 text-base border border-dashed border-purple-400 text-purple-700 rounded-lg hover:bg-purple-50 transition-colors"
+            className="w-full py-2 text-base border border-dashed border-purple-400 text-purple-700 rounded-lg hover:bg-purple-50 transition-colors"
             style={{ background: '#FAF5FF' }}>
             + 新增外部互動
           </button>
         </div>
-        <p className="text-sm text-gray-400 mb-3">▼ 點任務右側箭頭可展開說明、輸入、產出欄位；滑鼠移到任務間可從中間插入</p>
+        <p className="text-sm text-gray-400 mb-3">▼ 點任務右側箭頭可展開說明、輸入、產出欄位；滑鼠移到任務間 / 列表前後可插入新任務</p>
         <div className="flex flex-col gap-2">
-          {/* Top InsertSlot — insert before the first task. Hidden during
-              drag to avoid visual conflict with DropLine. */}
-          {!isDragging && liveFlow.tasks.length > 0 && (
+          {/* Top InsertSlot — covers "before first task" AND "empty list".
+              Hidden during drag to avoid visual conflict with DropLine. */}
+          {!isDragging && (
             <InsertSlot onClick={() => onAddTaskAt(0)} label="+ 插入任務" title="在此位置插入新任務" />
           )}
           {liveFlow.tasks.map((task, i) => (
@@ -102,12 +101,13 @@ export function DrawerContent({ activeTab, liveFlow, displayLabels,
                 onRemove={() => onRemoveTask(task.id)}
                 canRemove={liveFlow.tasks.length > 1}
                 dragHandlers={rowProps(i)}
+                dragHandleProps={handleProps(i)}
                 isDragging={dragIdx === i}
                 dropEdge={getDropEdge(i)}
               />
-              {/* Between-row InsertSlot — except after the last task,
-                  which the top "新增任務（加到最後）" button covers. */}
-              {!isDragging && i < liveFlow.tasks.length - 1 && (
+              {/* InsertSlot after every task — including the last one
+                  (covers "after last task" / append-at-end). */}
+              {!isDragging && (
                 <InsertSlot onClick={() => onAddTaskAt(i + 1)} label="+ 插入任務" title="在此位置插入新任務" />
               )}
             </Fragment>
@@ -118,10 +118,10 @@ export function DrawerContent({ activeTab, liveFlow, displayLabels,
     );
   }
 
-  // 'roles' tab — same UX pattern as tasks: top "+ 新增角色" button is gone;
-  // hover-between-rows InsertSlot is the sole entry point. Drag-reorder still
-  // shows DropLine.
-  const { dragIdx: roleDragIdx, overIdx: roleOverIdx, dropAfter: roleDropAfter, rowProps: roleRowProps } = roleDrag;
+  // 'roles' tab — same pattern: no top button; InsertSlot at every slot.
+  // Drag start moved to DragHandle so all rows reorder reliably.
+  const { dragIdx: roleDragIdx, overIdx: roleOverIdx, dropAfter: roleDropAfter,
+    rowProps: roleRowProps, handleProps: roleHandleProps } = roleDrag;
   const roleDropTargetSlot = (roleDragIdx === null || roleOverIdx === null) ? null
     : (roleDropAfter ? roleOverIdx + 1 : roleOverIdx);
   const showRoleLineAt = (slot) => roleDropTargetSlot === slot
@@ -137,16 +137,11 @@ export function DrawerContent({ activeTab, liveFlow, displayLabels,
   }
   return (
     <div>
-      <button
-        onClick={() => addRoleAt((liveFlow.roles || []).length)}
-        className="w-full py-2 text-base border border-dashed border-blue-400 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors mb-3">
-        + 新增角色（加到最後）
-      </button>
       <p className="text-sm text-gray-400 mb-3 flex items-center gap-1">
-        <span className="text-gray-400">⠨</span> 可拖曳左側圓點改變順序；滑鼠移到角色間可從中間插入
+        <span className="text-gray-400">⠨</span> 可拖曳左側圓點改變順序；滑鼠移到角色間 / 列表前後可插入新角色
       </p>
       <div className="flex flex-col gap-2">
-        {!isRoleDragging && (liveFlow.roles || []).length > 0 && (
+        {!isRoleDragging && (
           <InsertSlot onClick={() => addRoleAt(0)} label="+ 插入角色" title="在此位置插入新角色" />
         )}
         {(liveFlow.roles || []).map((role, i) => (
@@ -156,7 +151,7 @@ export function DrawerContent({ activeTab, liveFlow, displayLabels,
               {...roleRowProps(i)}
               className={`flex items-center gap-2 p-2 bg-gray-50 border border-gray-200 rounded-lg transition-all select-none
                 ${roleDragIdx === i ? 'opacity-40 scale-95' : ''}`}>
-              <DragHandle />
+              <DragHandle {...roleHandleProps(i)} />
               <span className="text-sm text-gray-400 w-5 flex-shrink-0">#{i + 1}</span>
               <input type="text" placeholder="角色名稱" value={role.name}
                 onChange={e => onPatch({ roles: liveFlow.roles.map(r => r.id === role.id ? { ...r, name: e.target.value } : r) })}
@@ -173,7 +168,7 @@ export function DrawerContent({ activeTab, liveFlow, displayLabels,
                 disabled={liveFlow.roles.length <= 1}
                 className="text-red-400 hover:text-red-600 disabled:opacity-20 text-xl leading-none">✕</button>
             </div>
-            {!isRoleDragging && i < (liveFlow.roles || []).length - 1 && (
+            {!isRoleDragging && (
               <InsertSlot onClick={() => addRoleAt(i + 1)} label="+ 插入角色" title="在此位置插入新角色" />
             )}
           </Fragment>
