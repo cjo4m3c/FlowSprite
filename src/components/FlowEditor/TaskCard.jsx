@@ -2,6 +2,7 @@ import { useState } from 'react';
 import ConnectionSection from '../ConnectionSection.jsx';
 import { DragHandle } from '../dragReorder.jsx';
 import { CONNECTION_TYPES, SHAPE_TYPES, CONN_BADGE, CONN_ROW_BG, applyConnectionType } from '../../utils/taskDefs.js';
+import { formatConnection } from '../../model/connectionFormat.js';
 
 // ── TaskCard ────────────────────────────────────────
 export default function TaskCard({ task, roles, allTasks, displayLabels, onUpdate, onRemove, canRemove, dragHandlers, dragHandleProps, isDragging, dropEdge }) {
@@ -12,6 +13,11 @@ export default function TaskCard({ task, roles, allTasks, displayLabels, onUpdat
   const nameOptional = ct === 'start' || ct === 'end' || ct === 'breakpoint';
   const showShape = ct === 'sequence' || ct === 'subprocess';
   const [expanded, setExpanded] = useState(false);
+  // Derived "任務關聯說明" — the BPMN sequence-flow text that appears in the
+  // FlowTable / Excel / diagram tooltip. Showing it here lets the user see
+  // exactly what gets auto-generated as they edit, without bouncing to the
+  // table below.
+  const annotation = formatConnection(task, allTasks || [], displayLabels || {});
 
   // dropEdge marks this row as adjacent to the drop slot:
   //   'top'    → drop slot is above this row    (top edge highlighted)
@@ -113,6 +119,18 @@ export default function TaskCard({ task, roles, allTasks, displayLabels, onUpdat
           <ConnectionSection task={task} allTasks={allTasks} displayLabels={displayLabels} onUpdate={onUpdate} />
         </div>
       </div>
+
+      {/* Auto-generated 任務關聯說明 preview — uses the same 5-col layout
+          (drag spacer / badge col / role col + name col flex-1 / actions
+          col) so the text reads as "below the name column". Italic muted
+          gray makes it clear this is system-generated, not editable. */}
+      {annotation && (
+        <div className="flex items-start gap-2 px-2 pb-2 min-w-0">
+          <div className="w-5 flex-shrink-0" aria-hidden="true" />
+          <div className="w-[120px] flex-shrink-0 text-xs text-gray-400 italic pt-0.5">關聯說明</div>
+          <div className="flex-1 min-w-0 text-xs text-gray-500 italic break-words pt-0.5">{annotation}</div>
+        </div>
+      )}
 
       {/* Expandable detail fields */}
       {expanded && (
