@@ -6,6 +6,24 @@
 export default [
   {
     date: '2026-04-29',
+    title: '編輯器 InsertPicker：拉齊新增元件 UX + 多 start/end 改 warning（採方案 A）',
+    items: [
+      '**緣由**：使用者：「編輯器要可以選元件 + 自動補關聯說明文字，跟流程圖操作方式一樣，不要兩套邏輯」+「接受多個開始/結束事件，但儲存時跳提醒」+「採方案 A inline expand picker」。',
+      '**Step 1 — 新元件 `InsertPicker`**：`DrawerContent.jsx` 加 `InsertPicker` 元件，task tab 取代原 `InsertSlot`（role tab 仍用 InsertSlot 因角色只一種類型）。collapsed 樣式跟原 InsertSlot 一致（hover 顯示「+ 插入元件」pill）；點開後 inline expand 顯示完整 picker：`類型 dropdown` + 對應 sub-form fields + `[取消]` `[確認新增]`。',
+      '**Step 2 — 8 個元件類型平鋪**：dropdown 列出 L4 任務（預設）/ 排他閘道 / 並行閘道 / 包容閘道 / 開始事件 / 結束事件 / L3 流程 / 外部互動。**沒收進「其他」分類**（編輯器空間夠）。每選一個 type 顯示 inline 提示文字（一句話說明用途）。',
+      '**Step 3 — 對應 sub-form fields**：閘道 → 兩條分支（標籤 + 目標下拉）；L3 流程 → L3 編號（必填）+ 名稱（選填）；開始/結束/外部互動 → 名稱（選填）。task 沒額外欄位直接確認。`canConfirm` 計算決定確認按鈕是否 disable（gateway 必填兩個目標，L3 必填編號）。',
+      '**Step 4 — Action wiring**：`FlowEditor/index.jsx` 加 4 個 callback props（`onAddTaskAt` / `onAddOtherAt` / `onAddL3At` / `onAddGatewayAt`）。每個都用 anchorId pattern：`index 0 → tasks[0]` / `index N → tasks[N-1]` / `index >= len → tasks[last]`。複用 `actions.addTaskBefore/After / addOtherAfter / addL3ActivityAfter / insertGatewayAfter`。',
+      '**Step 5 — `addOtherAfter` 加 `name` 參數**：`useFlowActions/converters.js` 簽名加 `name = \'\'`，`makeTask({...overrides, name})` 套用。讓 picker 一次傳「name + type」建立元件（例如使用者可填「客戶提交需求」名稱 + 選「外部互動」類型）。',
+      '**Step 6 — 多 start/end warning**：`validation.js` 加 2 個 warning：`startTasks.length >= 2` → 「BPMN 一般建議單一起點，請確認是否刻意設計多個入口」；`endTasks.length >= 2` → 「多個終點可接受（不同情境收尾），請確認是否刻意設計」。**非 blocking**，使用者可選「仍然儲存」。',
+      '**自動補關聯說明（已在 PR #96 實作，本 PR 確認）**：`formatConnection` 衍生計算自動產生「序列流向 X / 條件分支至 Y、Z / 並行合併 A、B，序列流向 C / 調用子流程 D-E-F」等 BPMN 文字，FlowTable / 流程圖 hover / Excel 匯出 / drawio 全部自動同步。**編輯器 TaskCard 顯示衍生文字**列入 PR-2 範圍（本 PR 不改）。',
+      '**編號自動更正（已在 PR #95 / #107 實作，本 PR 確認）**：`addTaskAfter` 等 actions 已 strip stored l4Number 讓 `computeDisplayLabels` 重算（PR #95）。Excel 匯入也自動 normalize（PR #107）。本 PR 新增動作（onAddOtherAt / onAddL3At / onAddGatewayAt）走相同 actions 路徑，編號規則自動套用。',
+      '**七視圖一致（已實作，本 PR 確認）**：所有 view（編輯器 / 流程圖 / FlowTable / Excel / drawio / PNG / Header L3 / 首頁 Dashboard 卡片）皆從 `liveFlow` 衍生，即時同步。下載走 `saveAndValidate`（PR #93）。',
+      '**動到的檔案（4 個）**：`src/components/FlowEditor/DrawerContent.jsx`（+InsertPicker 元件 / task tab 取代 InsertSlot / signature 加新 callbacks）/ `src/components/FlowEditor/index.jsx`（+ onAddOtherAt / onAddL3At / onAddGatewayAt 三個 callback wiring；移 onAddInteraction 過時 callback）/ `src/components/FlowEditor/useFlowActions/converters.js`（addOtherAfter 加 name 參數）/ `src/model/validation.js`（多 start/end warning）/ `src/data/changelog/current.js`（本條）。`build` 通過。',
+      '**接下來 PR-2**：TaskCard 顯示衍生 flowAnnotation 灰色提示 + removeTask wiring 重連（刪除中間任務時前後自動接起來）。',
+    ],
+  },
+  {
+    date: '2026-04-29',
     title: '修拖曳 (DragHandle 改用 div + CSS dots) + 移除「新增外部互動」按鈕',
     items: [
       '**緣由**：使用者：「現在編輯器內任務 / 泳道角色都無法拖曳換順序」+「先移除新增外部互動按鈕」。',

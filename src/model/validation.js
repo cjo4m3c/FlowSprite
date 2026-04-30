@@ -52,6 +52,16 @@ export function validateFlow(flow) {
     if (!(incoming[e.id] > 0)) blocking.push('「流程結束」/「流程斷點」必須有其他任務連接到它');
   });
 
+  // ── Multi-start / multi-end warnings (2026-04-29) ──────────────
+  // User decision: allow multiple start / end events but surface a save-time
+  // notice so the user can confirm the topology was intentional.
+  if (startTasks.length >= 2) {
+    warnings.push(`流程有 ${startTasks.length} 個「流程開始」節點。BPMN 一般建議單一起點，請確認是否刻意設計多個入口`);
+  }
+  if (endTasks.length >= 2) {
+    warnings.push(`流程有 ${endTasks.length} 個「流程結束 / 流程斷點」節點。多個終點可接受（不同情境收尾），請確認是否刻意設計`);
+  }
+
   // ── Warning-level checks ───────────────────────────────
   tasks.forEach((t, i) => {
     const ct = t.connectionType || 'sequence';
