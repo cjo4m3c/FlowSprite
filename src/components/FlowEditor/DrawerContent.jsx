@@ -19,10 +19,12 @@ function InsertPicker({ index, allTasks, displayLabels,
   onAddTaskAt, onAddOtherAt, onAddL3At, onAddGatewayAt }) {
   const [expanded, setExpanded] = useState(false);
   const [type, setType] = useState('task');
-  const [gwTarget1, setGwTarget1] = useState('');
-  const [gwTarget2, setGwTarget2] = useState('');
-  const [gwLabel1, setGwLabel1] = useState('');
-  const [gwLabel2, setGwLabel2] = useState('');
+  // Gateway: list of {label, target} branches. Default 2; user can add /
+  // remove until ≥2 remain. Mirrors ContextMenu GatewaySubForm UX.
+  const [gwBranches, setGwBranches] = useState([
+    { label: '', target: '' },
+    { label: '', target: '' },
+  ]);
   const [l3Number, setL3Number] = useState('');
   const [l3Name, setL3Name] = useState('');
   const [eventName, setEventName] = useState('');
@@ -30,8 +32,7 @@ function InsertPicker({ index, allTasks, displayLabels,
   function reset() {
     setExpanded(false);
     setType('task');
-    setGwTarget1(''); setGwTarget2('');
-    setGwLabel1(''); setGwLabel2('');
+    setGwBranches([{ label: '', target: '' }, { label: '', target: '' }]);
     setL3Number(''); setL3Name('');
     setEventName('');
   }
@@ -46,17 +47,19 @@ function InsertPicker({ index, allTasks, displayLabels,
       onAddL3At(index, l3Number.trim(), l3Name.trim());
     } else if (type.startsWith('gateway-')) {
       const kind = type.slice(8);  // xor / and / or
-      if (!gwTarget1 || !gwTarget2) return;
-      onAddGatewayAt(index, kind, gwTarget1, gwTarget2, gwLabel1, gwLabel2);
+      const valid = gwBranches.filter(b => b.target);
+      if (valid.length < 2) return;
+      onAddGatewayAt(index, kind, valid.map(b => ({ label: b.label, targetId: b.target })));
     }
     reset();
   }
 
   // Disable confirm when required fields missing
+  const validBranchCount = gwBranches.filter(b => b.target).length;
   const canConfirm =
     type === 'task' || type === 'start' || type === 'end' || type === 'interaction'
       || (type === 'l3activity' && l3Number.trim())
-      || (type.startsWith('gateway-') && gwTarget1 && gwTarget2);
+      || (type.startsWith('gateway-') && validBranchCount >= 2);
 
   if (!expanded) {
     return (
@@ -110,26 +113,30 @@ function InsertPicker({ index, allTasks, displayLabels,
       {/* Type-specific fields */}
       {type.startsWith('gateway-') && (
         <>
-          <div className="flex items-center gap-2">
-            <span className={lbl}>分支 1</span>
-            <input type="text" value={gwLabel1} onChange={e => setGwLabel1(e.target.value)}
-              placeholder="條件標籤" className={`${midInput} bg-white`} />
-            <select value={gwTarget1} onChange={e => setGwTarget1(e.target.value)}
-              className={`${sel} bg-white`}>
-              <option value="">選擇目標任務</option>
-              {targetOptions.map(t => <option key={t.id} value={t.id}>{taskOptionLabel(t, displayLabels || {})}</option>)}
-            </select>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className={lbl}>分支 2</span>
-            <input type="text" value={gwLabel2} onChange={e => setGwLabel2(e.target.value)}
-              placeholder="條件標籤" className={`${midInput} bg-white`} />
-            <select value={gwTarget2} onChange={e => setGwTarget2(e.target.value)}
-              className={`${sel} bg-white`}>
-              <option value="">選擇目標任務</option>
-              {targetOptions.map(t => <option key={t.id} value={t.id}>{taskOptionLabel(t, displayLabels || {})}</option>)}
-            </select>
-          </div>
+          {gwBranches.map((b, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <span className={lbl}>分支 {i + 1}</span>
+              <input type="text" value={b.label}
+                onChange={e => setGwBranches(gwBranches.map((row, j) => j === i ? { ...row, label: e.target.value } : row))}
+                placeholder="條件標籤" className={`${midInput} bg-white`} />
+              <select value={b.target}
+                onChange={e => setGwBranches(gwBranches.map((row, j) => j === i ? { ...row, target: e.target.value } : row))}
+                className={`${sel} bg-white`}>
+                <option value="">選擇目標任務</option>
+                {targetOptions.map(t => <option key={t.id} value={t.id}>{taskOptionLabel(t, displayLabels || {})}</option>)}
+              </select>
+              {gwBranches.length > 2 && (
+                <button onClick={() => setGwBranches(gwBranches.filter((_, j) => j !== i))}
+                  title="移除此分支"
+                  className="w-6 flex-shrink-0 text-red-400 hover:text-red-600 text-base">✕</button>
+              )}
+            </div>
+          ))}
+          <button type="button"
+            onClick={() => setGwBranches([...gwBranches, { label: '', target: '' }])}
+            className="text-sm text-blue-600 hover:text-blue-800 self-start px-2 py-1">
+            + 新增分支
+          </button>
         </>
       )}
 

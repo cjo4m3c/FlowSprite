@@ -11,7 +11,6 @@
 ## 規格已明確、可排程
 
 - **W. 泳道高度調整視覺改動**（使用者：「接下來有個任務是要調整視覺呈現，可能跟泳道高度調整有關」） — 動到的位置：`src/diagram/constants.js` `LAYOUT.LANE_H`/`NODE_H` 常數、`src/diagram/layout/helpers.js` `minLaneH(n)` / `ROUTE_SLOT_H` / `ROUTE_BOTTOM_PAD` 槽位、`src/diagram/layout/computeLayout.js` 末段 `laneTopY` / `laneHeights` 算法、`DiagramRenderer/index.jsx` + `StickyHeader.jsx` 渲染同步、`drawioExport.js` 吃 `laneHeights`。若做「使用者手動指定某泳道高度」需在 `flow.roles[i]` 加新欄位（例 `customHeight`），computeLayout 取 override 蓋過動態算出的值。**跟 Phase 2 抽出的 selector 幾乎無關**——lane 高度是 routing 算法衍生狀態，不是 model 層的純資料 selector。
-- **U. 插入閘道操作邏輯拉齊**（使用者：「拉齊插入閘道的操作邏輯（現在圖上是插入閘道、編輯器是序列規則）」）— `DiagramRenderer` ContextMenu「插入閘道」與 `FlowEditor` 編輯器內的插入流程不一致，要統一
 - **V. 儲存事件閃亮提醒**（使用者：「新增儲存事件閃亮亮動態提醒」）— 儲存按鈕被按下後加 logo 閃光 / 按鈕短暫變綠等視覺回饋（取代原 J「儲存提醒優化」的待選方向）
 - **C. Phase 3.5 gateway obstacle avoidance**（`src/diagram/layout/`）— 閘道作為跨列 forward obstacle 時走 vertical-detour
 - ~~**N. 泳道角色拖曳視覺提示**~~ — **OBSOLETED 2026-04-30**：HTML5 drag 整個被砍（PR #112 改用 ▲ ▼ 按鈕），`useDragReorder` / DropLine 都不存在了。如果使用者真的有跨欄移動需求，再以「跳到位置 N」`<input type="number">` 補強
@@ -46,6 +45,11 @@
 - **PR #117**：backlog remove Y / Z / AA / AB（使用者回報已做完）
 - **PR #118**：TaskCard Row 2「元件類型」label 字級 `text-xs` → `text-sm`，跟 ConnectionSection / 展開區塊 label 視覺對齊
 - **PR #119**：外部關係人互動元件全套規則 — `applyRoleChange` / `syncTasksToRoles` 純函式 + 5 個觸發點（TaskCard / ContextMenu 角色 select、DrawerContent / Wizard role.type cascade、storage 載入 fixup）+ `INTERACTION_FILL` 灰底 `#A0A0A0` + 拿掉 validation 3e + business-spec §3.1 新章節
+- **PR #120**：backlog log PR #116-#119 in 已完成
+- **PR #121**：修外部互動底色從未生效 — `shapes.jsx` + `drawioExport.js` 渲染端誤判 `task.type === 'interaction'`（外部互動實際是 `type='task' shapeType='interaction'`，PR #111 model 後既存 bug），改成 `task.shapeType` 兩行修
+- **PR #122**：交接文件全面整理 — HANDOVER / README 目錄樹反映 directory 拆檔結構、skills 6→9 條、CLAUDE.md §2 git push 規則更新、刪除 `.claude/handover-2026-04-29.md` + `phase2-handover.md` 兩份過時 session-snapshot；changelog freeze c22
+- **PR #123**：流程圖文字 UI 微調 — TaskShape `lineH` 14→24（1.5 ratio）+ `letterSpacing` 0.02em / Edge label 白底寬度從固定 40×22 改成 `estimateTextWidth + padding` 動態 hug 文字 / L4Number 加白底 pill 防被線穿過
+- **U（PR #124）**：新增閘道操作拉齊 — `insertGatewayAfter` 簽名升級成 N-branch；ContextMenu / DrawerContent InsertPicker 都從固定 2 條改成預設 2 條 + 「+ 新增分支」/「✕」可動態增減
 
 ## 已完成（2026-04-28 至 2026-04-29 出清）
 

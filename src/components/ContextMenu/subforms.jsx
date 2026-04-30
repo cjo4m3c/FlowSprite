@@ -76,14 +76,36 @@ export function ConnectionSubForm({
   );
 }
 
+/**
+ * Add-gateway sub-form — manages a list of {label, target} branches.
+ * Default 2 rows (typical fork case); user can `+ 新增分支` for N or
+ * remove rows with ✕ until 2 remain. Mirrors the editor-side InsertPicker
+ * so 新增閘道 UX is identical from tooltip and editor entry points.
+ */
 export function GatewaySubForm({
   gwType, setGwType,
-  gwLabel1, setGwLabel1, gwTarget1, setGwTarget1,
-  gwLabel2, setGwLabel2, gwTarget2, setGwTarget2,
+  gwBranches, setGwBranches,
   targetOptions, displayLabels,
   onCancel, onSubmit,
 }) {
-  const canSubmit = !!(gwTarget1 && gwTarget2);
+  const validCount = gwBranches.filter(b => b.target).length;
+  const canSubmit = validCount >= 2;
+  const placeholderFor = (i) => {
+    if (gwType === 'and') return '條件標籤（選填）';
+    if (i === 0) return '條件標籤（如「已核准」）';
+    if (i === 1) return '條件標籤（如「未通過」）';
+    return '條件標籤';
+  };
+  function updateBranch(i, patch) {
+    setGwBranches(gwBranches.map((b, j) => j === i ? { ...b, ...patch } : b));
+  }
+  function addBranch() {
+    setGwBranches([...gwBranches, { label: '', target: '' }]);
+  }
+  function removeBranch(i) {
+    if (gwBranches.length <= 2) return;
+    setGwBranches(gwBranches.filter((_, j) => j !== i));
+  }
   return (
     <div className="px-3 py-2 bg-gray-50 border-t border-b border-gray-100 flex flex-col gap-2">
       <div className="flex flex-col gap-1">
@@ -102,28 +124,29 @@ export function GatewaySubForm({
           ))}
         </div>
       </div>
-      <div className="flex flex-col gap-1">
-        <span className="text-xs text-gray-500">分支 1</span>
-        <input type="text" value={gwLabel1} onChange={(e) => setGwLabel1(e.target.value)}
-          placeholder={gwType === 'and' ? '條件標籤（選填）' : '條件標籤（如「已核准」）'}
-          className="px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-400" />
-        <select value={gwTarget1} onChange={(e) => setGwTarget1(e.target.value)}
-          className="px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-400">
-          <option value="">選擇目標任務</option>
-          {targetOptions.map(t => renderTargetOption(t, displayLabels))}
-        </select>
-      </div>
-      <div className="flex flex-col gap-1">
-        <span className="text-xs text-gray-500">分支 2</span>
-        <input type="text" value={gwLabel2} onChange={(e) => setGwLabel2(e.target.value)}
-          placeholder={gwType === 'and' ? '條件標籤（選填）' : '條件標籤（如「未通過」）'}
-          className="px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-400" />
-        <select value={gwTarget2} onChange={(e) => setGwTarget2(e.target.value)}
-          className="px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-400">
-          <option value="">選擇目標任務</option>
-          {targetOptions.map(t => renderTargetOption(t, displayLabels))}
-        </select>
-      </div>
+      {gwBranches.map((b, i) => (
+        <div key={i} className="flex flex-col gap-1">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-gray-500">分支 {i + 1}</span>
+            {gwBranches.length > 2 && (
+              <button onClick={() => removeBranch(i)} title="移除此分支"
+                className="text-xs text-red-400 hover:text-red-600 leading-none px-1">✕</button>
+            )}
+          </div>
+          <input type="text" value={b.label} onChange={(e) => updateBranch(i, { label: e.target.value })}
+            placeholder={placeholderFor(i)}
+            className="px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-400" />
+          <select value={b.target} onChange={(e) => updateBranch(i, { target: e.target.value })}
+            className="px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-400">
+            <option value="">選擇目標任務</option>
+            {targetOptions.map(t => renderTargetOption(t, displayLabels))}
+          </select>
+        </div>
+      ))}
+      <button onClick={addBranch}
+        className="text-xs text-blue-600 hover:text-blue-800 self-start px-2 py-1">
+        + 新增分支
+      </button>
       <p className="text-xs text-gray-400 pl-1">
         ℹ 閘道會插入在當前元件之後，原本「序列流向」會被覆寫為「→ 閘道」
       </p>

@@ -215,7 +215,7 @@ export default function FlowEditor({ flow, onBack, onSave }) {
             if (!anchorId) return;
             actions.addL3ActivityAfter(anchorId, l3Number, l3Name);
           }}
-          onAddGatewayAt={(index, gatewayType, target1, target2, label1, label2) => {
+          onAddGatewayAt={(index, gatewayType, branches) => {
             const tasks = liveFlow.tasks || [];
             const anchorId = index <= 0
               ? tasks[0]?.id
@@ -223,7 +223,7 @@ export default function FlowEditor({ flow, onBack, onSave }) {
                 ? tasks[tasks.length - 1]?.id
                 : tasks[index - 1]?.id;
             if (!anchorId) return;
-            actions.insertGatewayAfter(anchorId, gatewayType, target1, target2, label1, label2);
+            actions.insertGatewayAfter(anchorId, gatewayType, branches);
           }} />
       </RightDrawer>
 
