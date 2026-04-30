@@ -2,7 +2,7 @@
 
 由 TodoWrite 即時管理當前 session 任務；此檔保留跨 session 需要記得的 backlog。
 
-來源：2026-04-28 交接 §5 + 同日 K/L PR 收尾新增 + 2026-04-29 使用者新提待辦合併（PR #85）。
+來源：2026-04-28 交接 §5 + 同日 K/L PR 收尾新增 + 2026-04-29 使用者新提待辦合併（PR #85）+ 2026-04-30 使用者整合（本次）。
 
 ## 立即可動 / Bug
 
@@ -10,20 +10,25 @@
 
 ## 規格已明確、可排程
 
-- **W. 泳道高度調整視覺改動**（使用者：「接下來有個任務是要調整視覺呈現，可能跟泳道高度調整有關」） — 動到的位置：`src/diagram/constants.js` `LAYOUT.LANE_H`/`NODE_H` 常數、`src/diagram/layout/helpers.js` `minLaneH(n)` / `ROUTE_SLOT_H` / `ROUTE_BOTTOM_PAD` 槽位、`src/diagram/layout/computeLayout.js` 末段 `laneTopY` / `laneHeights` 算法、`DiagramRenderer/index.jsx` + `StickyHeader.jsx` 渲染同步、`drawioExport.js` 吃 `laneHeights`。若做「使用者手動指定某泳道高度」需在 `flow.roles[i]` 加新欄位（例 `customHeight`），computeLayout 取 override 蓋過動態算出的值。**跟 Phase 2 抽出的 selector 幾乎無關**——lane 高度是 routing 算法衍生狀態，不是 model 層的純資料 selector。
-- **V. 儲存事件閃亮提醒**（使用者：「新增儲存事件閃亮亮動態提醒」）— 儲存按鈕被按下後加 logo 閃光 / 按鈕短暫變綠等視覺回饋（取代原 J「儲存提醒優化」的待選方向）
-- **C. Phase 3.5 gateway obstacle avoidance**（`src/diagram/layout/`）— 閘道作為跨列 forward obstacle 時走 vertical-detour
-- ~~**N. 泳道角色拖曳視覺提示**~~ — **OBSOLETED 2026-04-30**：HTML5 drag 整個被砍（PR #112 改用 ▲ ▼ 按鈕），`useDragReorder` / DropLine 都不存在了。如果使用者真的有跨欄移動需求，再以「跳到位置 N」`<input type="number">` 補強
+- **AD. 迴圈返回自動偵測**（使用者：「迴圈返回無法自動判斷」）— 任意 task 的 `nextTaskIds` 指向上游 task（DAG 反向邊）時自動標記成 loop-return 連線型，行為比照 auto-merge 偵測。動到 `src/model/connectionFormat.js` formatConnection 加反向邊判斷 + `src/model/flowSelectors.js` 加 `isBackEdge(task, allTasks)` selector。**注意**：(1) 編輯器已移除「迴圈返回」入口（PR-2026-04-29），這裡是衍生顯示不是手動標記 (2) 跟 backlog AC 複製工作流 / AG 表格無依賴，可獨立做
+- **AE. 儲存檢核補強**（使用者：「更新儲存時檢核/提醒條件（連線錯誤、元件未連線、多個開始結束、未寫任務名稱）」）— 既有實作清單（`src/model/validation.js`）：`detectOverrideViolations` 偵測連線錯誤 ✓ / rule 4 孤立節點 ✓ / multi-start / multi-end warnings ✓。**待補**：任務名稱必填 warning（rule 6 新增 `if (!t.name?.trim() && t.type === 'task') warnings.push(...)`，非 blocking）。同時 audit 現有 warning UX modal 是否清楚分群顯示
+- **AF. Excel 匯入檢核補強**（使用者：「更新匯入excel檢核/提醒條件（編號規則、跳行等）」）— 既有 `validateNumbering` 已強制 dash-only + `_g` / `_s` 前綴對應，列出所有錯誤列。**待補**：(a) 跳行偵測（連續行間 L4 順序跳號）(b) 空列偵測（中間有完全空的 row）(c) Header 行驗證（前幾欄必須是預期欄位）。動到 `src/utils/excelImport.js`
+- **V. 儲存事件閃亮提醒**（使用者：「新增儲存事件閃亮亮閃亮亮動態提醒」）— 儲存按鈕被按下後加 logo 閃光 / 按鈕短暫變綠等視覺回饋（取代原 J「儲存提醒優化」的待選方向）。動到 `src/components/FlowEditor/Header.jsx`
 - **AC. 複製整個 L3 工作流**（使用者：「可以在頁面上複製一整個工作流」）— Dashboard 卡片加「複製」按鈕，複製後產生新 flow（編號自動 +1 或讓使用者改），tasks / roles / connections 全套複製。動到 `Dashboard` + `src/utils/storage.js` 加 `cloneFlow` 函式
+- **AG. 表格一鍵適應文字高度**（使用者：「表格可以一鍵讓他適應文字高度嗎？」）— FlowTable 預設或 toolbar 加按鈕，textarea 從 fixed-height 改成 auto-grow（`field-sizing: content` 或 JS 計算 scrollHeight）。動到 `src/components/FlowTable.jsx`
+- **W. 泳道高度調整視覺改動**（使用者：「接下來有個任務是要調整視覺呈現，可能跟泳道高度調整有關」）— 動到的位置：`src/diagram/constants.js` `LAYOUT.LANE_H`/`NODE_H` 常數、`src/diagram/layout/helpers.js` `minLaneH(n)` / `ROUTE_SLOT_H` / `ROUTE_BOTTOM_PAD` 槽位、`src/diagram/layout/computeLayout.js` 末段 `laneTopY` / `laneHeights` 算法、`DiagramRenderer/index.jsx` + `StickyHeader.jsx` 渲染同步、`drawioExport.js` 吃 `laneHeights`。若做「使用者手動指定某泳道高度」需在 `flow.roles[i]` 加新欄位（例 `customHeight`），computeLayout 取 override 蓋過動態算出的值
+- ~~**N. 泳道角色拖曳視覺提示**~~ — **OBSOLETED 2026-04-30**：HTML5 drag 整個被砍（PR #112 改用 ▲ ▼ 按鈕），`useDragReorder` / DropLine 都不存在了
 
 ## 規格待確認、不能直接動手
 
+- **AH. 線段上的字被任務矩形擋住的處理**（使用者：「線段上的字如果被擋到，可以提醒或手動調整嗎？暫定先調整線段指向，看要不要調整 hover 顯示」）— 規格不明確，需先回答：(1)「提醒」是儲存檢核 warning rule、modal、還是畫面紅框視覺 indicator？(2)「手動調整」是讓使用者拖連線端點 / 重新 routing 嗎？(3) hover 顯示什麼？放大 label / float tooltip / 整段 lift？(4) 偵測判定：被任何 task rect 完全 / 部分覆蓋都算？範圍 padding？
 - **F. Excel 部分匯入**（使用者：「只匯入＋覆蓋 excel 部分內容欄位、或自動略過部分欄位」）— 單一欄位 / 部分行覆蓋邏輯
 - **G. 匯出圖等比寬度**（使用者：「匯出的圖檔要符合 ISO 文件適用寬度」）— PNG 匯出規格 / ISO A4 等比
 
 ## Nice-to-have / 有空再修
 
-- **B. layout 同欄對齊**（使用者：「先放成 nice-to-have」）— fork 兩分支步數不等時，短分支末段對齊到長分支同欄；含使用者要求的「包容、並行閘道後方任務對齊」。推薦解法 A（`alignForkBranches` post-pass），先開 `claude/preview-layout-same-column` 預覽分支驗證。動手前須跟使用者確認 §10.6 四個問題
+- **B. layout 同欄對齊**（使用者：「先放成 nice-to-have」+「包容、並行閘道後方任務對齊」）— fork 兩分支步數不等時，短分支末段對齊到長分支同欄；含使用者要求的「包容、並行閘道後方任務對齊」。推薦解法 A（`alignForkBranches` post-pass），先開 `claude/preview-layout-same-column` 預覽分支驗證。動手前須跟使用者確認 §10.6 四個問題
+- **C. 線段邏輯 / Phase 3.5 gateway obstacle avoidance**（`src/diagram/layout/`）— 閘道作為跨列 forward obstacle 時走 vertical-detour
 - **H. 邊側批量下載缺檔**（使用者：「批量下載數量太多時比較後面的編號會漏檔案 → 目前排解只有 edge 瀏覽器有，晚點再修」）
 - **後續批次拆檔（PR-4 size check 命中）**：`Dashboard.jsx` 26KB / `ContextMenu.jsx` 19KB / 凍結 `c13.js` 拆成 c13a + c13b（17KB）/ `excelImport.js` 15.5KB（PR-7 加完 validateFlow 又超 15KB 軟上限）。已解：`HelpPanel.jsx` 26KB → 11.3KB（PR #84 抽 helpPanelData）/ `taskDefs.js` 17.4KB → 14.3KB（PR #81 抽 selector）/ `excelImport.js` 17.2 → 14.9KB（PR #80）
 
@@ -50,6 +55,11 @@
 - **PR #122**：交接文件全面整理 — HANDOVER / README 目錄樹反映 directory 拆檔結構、skills 6→9 條、CLAUDE.md §2 git push 規則更新、刪除 `.claude/handover-2026-04-29.md` + `phase2-handover.md` 兩份過時 session-snapshot；changelog freeze c22
 - **PR #123**：流程圖文字 UI 微調 — TaskShape `lineH` 14→24（1.5 ratio）+ `letterSpacing` 0.02em / Edge label 白底寬度從固定 40×22 改成 `estimateTextWidth + padding` 動態 hug 文字 / L4Number 加白底 pill 防被線穿過
 - **U（PR #124）**：新增閘道操作拉齊 — `insertGatewayAfter` 簽名升級成 N-branch；ContextMenu / DrawerContent InsertPicker 都從固定 2 條改成預設 2 條 + 「+ 新增分支」/「✕」可動態增減
+
+**2026-04-30 使用者整合 backlog 時確認 PR #123 已涵蓋的兩項**（不需另外排程）：
+
+- ~~條件分支白底 pixel 數要跟字一樣長~~ → **PR #123 已做**（`estimateTextWidth + 8` 動態 hug）
+- ~~數字序號白底（端點有線時）+ 圖層在最上層~~ → **PR #123 已做**（L4Number `<g>` + 白底 pill + paint order TasksLayer 已在 connections 後）
 
 ## 已完成（2026-04-28 至 2026-04-29 出清）
 
