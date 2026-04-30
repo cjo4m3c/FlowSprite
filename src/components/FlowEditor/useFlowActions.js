@@ -146,7 +146,11 @@ export function useFlowActions({ liveFlow, patch }) {
     patch({ tasks: applySequentialDefaults(renumbered) });
   }
 
-  function insertGatewayAfter(anchorId, gatewayType, targetId1, targetId2, label1 = '', label2 = '') {
+  // Accepts an array of {label, targetId} so callers can prefill 2..N branches.
+  // Backwards-compat: callers passing the legacy positional form
+  // (anchorId, type, target1, target2, label1, label2) still work via the
+  // 2-element fallback below.
+  function insertGatewayAfter(anchorId, gatewayType, ...rest) {
     const idx = liveFlow.tasks.findIndex(t => t.id === anchorId);
     if (idx < 0) return;
     const anchor = liveFlow.tasks[idx];
@@ -155,6 +159,20 @@ export function useFlowActions({ liveFlow, patch }) {
       and: 'parallel-branch',
       or:  'inclusive-branch',
     };
+    let conditions;
+    if (rest.length === 1 && Array.isArray(rest[0])) {
+      conditions = rest[0].map(c => ({
+        id: generateId(),
+        label: c.label || '',
+        nextTaskId: c.targetId || '',
+      }));
+    } else {
+      const [targetId1, targetId2, label1 = '', label2 = ''] = rest;
+      conditions = [
+        { id: generateId(), label: label1 || '', nextTaskId: targetId1 || '' },
+        { id: generateId(), label: label2 || '', nextTaskId: targetId2 || '' },
+      ];
+    }
     const newGateway = makeTask({
       type: 'gateway',
       gatewayType,
@@ -163,10 +181,7 @@ export function useFlowActions({ liveFlow, patch }) {
       // Pre-fill name with "[XX闘道] " prefix so the FlowTable / Excel rows
       // are immediately readable. User extends after the space.
       name: applyGatewayPrefix('', gatewayType),
-      conditions: [
-        { id: generateId(), label: label1 || '', nextTaskId: targetId1 || '' },
-        { id: generateId(), label: label2 || '', nextTaskId: targetId2 || '' },
-      ],
+      conditions,
       nextTaskIds: [],
     });
     // anchor's outgoing now points solely at the new gateway (overwrite).

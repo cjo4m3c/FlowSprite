@@ -6,6 +6,19 @@
 export default [
   {
     date: '2026-04-30',
+    title: '新增閘道操作拉齊：tooltip / 編輯器都可從預設 2 條擴充到 N 條分支',
+    items: [
+      '**緣由**：使用者：「我希望拉齊新增閘道的操作：(1) 在tooltip 新增閘道時，預設增加兩條線，但是使用者也可以像編輯器操作一樣，可以自行新增多條 (2) 在編輯器中，點選新增閘道後預設就會增加兩個條件編輯列，使用者也依樣可以自行新增多條」。對應 backlog 條目 U「插入閘道操作邏輯拉齊」。',
+      '**修法 1 — `useFlowActions.insertGatewayAfter` 簽名升級**：原先固定 6-arg `(anchorId, type, target1, target2, label1, label2)` 改成 variadic `(anchorId, type, ...rest)`，自動偵測：rest 為陣列 → 直接 map 成 `conditions: [{label, nextTaskId}]`；rest 為 4 個位置參數 → 退回原本 2-branch 行為（向後相容）。',
+      '**修法 2 — `ContextMenu/index.jsx` + `subforms.jsx GatewaySubForm`**：把原來的 `gwTarget1/2 + gwLabel1/2` 4 個獨立 state 換成單一 `gwBranches: [{label, target}]` 陣列，預設 2 條。`GatewaySubForm` 改用 `.map` 渲染分支列、加「+ 新增分支」按鈕（任意位置可加）+ 每列右上角「✕」移除按鈕（≤2 條時隱藏，避免使用者誤刪到剩 1）。Action toggle label 從「新增閘道（兩條連線）」改成「新增閘道」（不再宣稱兩條，因為現在可任意條）。',
+      '**修法 3 — `DrawerContent.jsx InsertPicker` 同樣套路**：`gwTarget1/2 + gwLabel1/2` → `gwBranches`、hard-coded 兩個 div block → `.map`，加「+ 新增分支」+ 每列「✕」。視覺保持原 5-col layout（label w-24 / 標籤 input w-40 / select flex-1 / actions w-6）。`canConfirm` 改檢查 `validBranchCount >= 2`。',
+      '**修法 4 — `FlowEditor/index.jsx` adapter 簡化**：`onAddGatewayAt` 收到的不再是 6 個位置參數，而是 `(index, gatewayType, branches)` 三個參數，直接轉發給 `actions.insertGatewayAfter`。',
+      '**動到的檔案（5 個）**：`src/components/FlowEditor/useFlowActions.js`（簽名升級 + 向後相容）/ `src/components/ContextMenu/subforms.jsx`（`GatewaySubForm` 改 N-branch）/ `src/components/ContextMenu/index.jsx`（state shape + submitGateway）/ `src/components/FlowEditor/DrawerContent.jsx`（InsertPicker gateway block）/ `src/components/FlowEditor/index.jsx`（adapter 簡化）/ `src/data/changelog/current.js`（本條）。`build` 通過。',
+      '**驗證情境**：(a) tooltip 點任務 → 新增閘道 → 預設 2 條分支顯示 ✓ (b) 點「+ 新增分支」→ 第 3 條出現 ✓ (c) 第 3 條右側出現 ✕，按下移除 → 回到 2 條 ✓ (d) 2 條時 ✕ 隱藏（防誤刪）✓ (e) 編輯器 InsertPicker 同樣行為 ✓ (f) 設好 ≥2 個目標 → 確認按鈕可按、生成的閘道 conditions 數量等於使用者填寫的有效分支數 ✓',
+    ],
+  },
+  {
+    date: '2026-04-30',
     title: '流程圖文字 UI 微調：任務元件行距 / 條件分支標籤白底寬度 / L4 編號白底',
     items: [
       '**緣由**：使用者提了 3 個 UI 問題：(1) 任務元件三行字擠在一起、中英文混排特別擠 (2) 條件分支連線上的標籤白底太大（固定 40×22px）跟字長不匹配 (3) 任務元件上方端點有線連入/連出時，編號文字直接被線穿過去看不清楚。',

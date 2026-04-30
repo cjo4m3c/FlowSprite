@@ -55,10 +55,12 @@ export default function ContextMenu({
   const [subForm, setSubForm] = useState(null);
   const [connTarget, setConnTarget] = useState('');
   const [gwType, setGwType] = useState('xor');
-  const [gwTarget1, setGwTarget1] = useState('');
-  const [gwTarget2, setGwTarget2] = useState('');
-  const [gwLabel1, setGwLabel1] = useState('');
-  const [gwLabel2, setGwLabel2] = useState('');
+  // gwBranches: [{ label, target }]. Default 2; user can add / remove
+  // until ≥2 remain. Mirrors editor InsertPicker UX.
+  const [gwBranches, setGwBranches] = useState([
+    { label: '', target: '' },
+    { label: '', target: '' },
+  ]);
   const [l3Number, setL3Number] = useState('');
   const [l3Name, setL3Name] = useState('');
 
@@ -67,10 +69,7 @@ export default function ContextMenu({
     setSubForm(null);
     setConnTarget('');
     setGwType('xor');
-    setGwTarget1('');
-    setGwTarget2('');
-    setGwLabel1('');
-    setGwLabel2('');
+    setGwBranches([{ label: '', target: '' }, { label: '', target: '' }]);
     setL3Number('');
     setL3Name('');
   }, [task?.id]);
@@ -125,8 +124,11 @@ export default function ContextMenu({
     onClose?.();
   }
   function submitGateway() {
-    if (!gwTarget1 || !gwTarget2) return;
-    onAddGateway?.(task.id, gwType, gwTarget1, gwTarget2, gwLabel1, gwLabel2);
+    const valid = gwBranches.filter(b => b.target);
+    if (valid.length < 2) return;
+    // Pass all branches (including empty-target rows are dropped) so the
+    // gateway is created with conditions matching what the user picked.
+    onAddGateway?.(task.id, gwType, valid.map(b => ({ label: b.label, targetId: b.target })));
     onClose?.();
   }
   function submitL3Activity() {
@@ -226,14 +228,11 @@ export default function ContextMenu({
         )}
 
         {/* 2. 新增閘道 */}
-        {canAddOutgoing && <ActionToggle formKey="gateway" label="新增閘道（兩條連線）" />}
+        {canAddOutgoing && <ActionToggle formKey="gateway" label="新增閘道" />}
         {subForm === 'gateway' && (
           <GatewaySubForm
             gwType={gwType} setGwType={setGwType}
-            gwLabel1={gwLabel1} setGwLabel1={setGwLabel1}
-            gwTarget1={gwTarget1} setGwTarget1={setGwTarget1}
-            gwLabel2={gwLabel2} setGwLabel2={setGwLabel2}
-            gwTarget2={gwTarget2} setGwTarget2={setGwTarget2}
+            gwBranches={gwBranches} setGwBranches={setGwBranches}
             targetOptions={targetOptions} displayLabels={displayLabels}
             onCancel={() => setSubForm(null)} onSubmit={submitGateway} />
         )}
