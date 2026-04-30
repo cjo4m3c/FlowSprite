@@ -154,6 +154,7 @@ export default function FlowEditor({ flow, onBack, onSave }) {
           onUpdateOverride={actions.updateConnectionOverride}
           onChangeTarget={actions.changeConnectionTarget}
           onWireThroughGateway={actions.wireConnectionThroughGateway}
+          onRemoveConnection={actions.removeConnection}
           onResetOverride={actions.resetConnectionOverride}
           onTaskClick={(task, x, y) => setContextMenu({ task, x, y })}
           highlightedTaskId={contextMenu?.task?.id || null} />

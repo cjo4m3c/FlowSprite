@@ -25,6 +25,10 @@
 - **F. Excel 部分匯入**（使用者：「只匯入＋覆蓋 excel 部分內容欄位、或自動略過部分欄位」）— 單一欄位 / 部分行覆蓋邏輯
 - **G. 匯出圖等比寬度**（使用者：「匯出的圖檔要符合 ISO 文件適用寬度」）— PNG 匯出規格 / ISO A4 等比
 
+## 長期待辦（架構級）
+
+- **AI. Undo / Redo stack**（2026-04-30 加入。緣由：刪除連線 / 刪除任務 / 拖端點都是無聲破壞性操作，使用者誤觸無法回復；目前只能「不要儲存、reload 從 localStorage 重來」）— 設計方向：`src/utils/undoStack.js` 純函式 push/pop，每次 `patch` 推進；FlowEditor 加 Ctrl+Z / Ctrl+Y keybinding + Header 按鈕。需先確認：(1) stack 大小上限（建議 50 步）(2) 跨 session 持久 or session-only（建議 session-only）(3) 哪些 action 該 push（建議所有 mutation；只讀操作如選擇任務不 push）
+
 ## Nice-to-have / 有空再修
 
 - **B. layout 同欄對齊**（使用者：「先放成 nice-to-have」+「包容、並行閘道後方任務對齊」）— fork 兩分支步數不等時，短分支末段對齊到長分支同欄；含使用者要求的「包容、並行閘道後方任務對齊」。推薦解法 A（`alignForkBranches` post-pass），先開 `claude/preview-layout-same-column` 預覽分支驗證。動手前須跟使用者確認 §10.6 四個問題

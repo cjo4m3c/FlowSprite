@@ -18,7 +18,7 @@ const { LANE_HEADER_W, TITLE_H } = LAYOUT;
 
 const DiagramRenderer = forwardRef(function DiagramRenderer({ flow, autoExportPng = false,
   onExportDone = null, onUpdateOverride = null, onChangeTarget = null,
-  onWireThroughGateway = null,
+  onWireThroughGateway = null, onRemoveConnection = null,
   onResetOverride = null, onTaskClick = null, highlightedTaskId = null }, ref) {
   const exportRef = useRef(null);
   const svgRef = useRef(null);
@@ -91,17 +91,32 @@ const DiagramRenderer = forwardRef(function DiagramRenderer({ flow, autoExportPn
     svgRef, flow, positions, connections, editable, onUpdateOverride, onChangeTarget, onWireThroughGateway,
   });
 
-  // Esc key cancels active drag / clears selection.
+  // Esc cancels drag / clears selection. Delete + Backspace remove the
+  // selected connection (deferred to onRemoveConnection prop).
   useEffect(() => {
     if (!editable) return;
     function onKey(e) {
-      if (e.key !== 'Escape') return;
-      if (dragInfo) setDragInfo(null);
-      else if (selectedConnKey) setSelectedConnKey(null);
+      // Don't hijack typing in inputs / textareas / contenteditable.
+      const t = e.target;
+      const tag = t?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || t?.isContentEditable) return;
+      if (e.key === 'Escape') {
+        if (dragInfo) setDragInfo(null);
+        else if (selectedConnKey) setSelectedConnKey(null);
+        return;
+      }
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedConnKey && !dragInfo) {
+        const conn = connections[parseInt(selectedConnKey.slice(1), 10)];
+        if (conn && onRemoveConnection) {
+          e.preventDefault();
+          onRemoveConnection(conn.fromId, conn.overrideKey);
+          setSelectedConnKey(null);
+        }
+      }
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [editable, dragInfo, selectedConnKey]);
+  }, [editable, dragInfo, selectedConnKey, connections, onRemoveConnection]);
 
   // PR I: compute which endpoints of each connection have been manually
   // overridden so we can draw a small indicator (🔧 dot) that's visible
@@ -257,6 +272,9 @@ const DiagramRenderer = forwardRef(function DiagramRenderer({ flow, autoExportPn
             const tgtPort = to[selectedConn.entrySide];
             const srcDragging = dragInfo?.endpoint === 'source';
             const tgtDragging = dragInfo?.endpoint === 'target';
+            const deletePt = (srcPort && tgtPort)
+              ? { x: (srcPort.x + tgtPort.x) / 2, y: (srcPort.y + tgtPort.y) / 2 }
+              : null;
             return (
               <>
                 {srcPort && (
@@ -268,6 +286,24 @@ const DiagramRenderer = forwardRef(function DiagramRenderer({ flow, autoExportPn
                   <EndpointHandle cx={tgtPort.x} cy={tgtPort.y}
                     onPointerDown={(e) => startDrag(e, selectedConnKey, 'target')}
                     isDragging={tgtDragging} />
+                )}
+                {deletePt && onRemoveConnection && !dragInfo && (
+                  <g style={{ cursor: 'pointer' }}
+                     onClick={(e) => {
+                       e.stopPropagation();
+                       onRemoveConnection(selectedConn.fromId, selectedConn.overrideKey);
+                       setSelectedConnKey(null);
+                     }}>
+                    <title>刪除這條連線（或按 Delete 鍵）</title>
+                    <circle cx={deletePt.x} cy={deletePt.y} r={11}
+                      fill="#FFFFFF" stroke="#EF4444" strokeWidth={1.5} />
+                    <line x1={deletePt.x - 4} y1={deletePt.y - 4}
+                          x2={deletePt.x + 4} y2={deletePt.y + 4}
+                          stroke="#EF4444" strokeWidth={1.8} strokeLinecap="round" />
+                    <line x1={deletePt.x + 4} y1={deletePt.y - 4}
+                          x2={deletePt.x - 4} y2={deletePt.y + 4}
+                          stroke="#EF4444" strokeWidth={1.8} strokeLinecap="round" />
+                  </g>
                 )}
               </>
             );

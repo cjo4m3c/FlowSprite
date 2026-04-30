@@ -139,6 +139,11 @@ export const VALIDATION = [
     detail: '「流程開始」節點以外，每個節點都應該被至少一條連線指向。孤立節點跳 warning。',
   },
   {
+    tier: 'warning',
+    rule: '閘道應有至少 2 條分支',
+    detail: '排他 / 並行 / 包容閘道都至少需要 2 條分支條件（fork 才有意義）。若刪到 < 2 條跳 warning，使用者可選「仍然儲存」或回去補。包容閘道另有「至少 2 個目標」規則（也是 warning）。',
+  },
+  {
     tier: 'import',
     rule: '條件分支標籤可選填',
     detail: 'XOR / AND / OR 三類閘道的每個分支都顯示「標籤」欄位但**不強制必填**。XOR / OR 標籤代表觸發條件；AND 標籤僅作註記用（規格上不評估條件）。Excel 匯入時兩種寫法都吃：`條件分支至 X（標籤）、Y` 或 `條件分支至 X、Y`。',
@@ -188,6 +193,10 @@ export const EDITABLE_ACTIONS = [
   {
     title: '拖曳連線端點換目標任務',
     desc: '把目標 handle 拖到別的任務上會直接換 target；綠色虛線框提示候選目標、藍色虛線預覽路徑。原 connectionOverrides 會自動跟著遷移。',
+  },
+  {
+    title: '刪除連線（點選後按 Delete 或紅 ✕ 按鈕）',
+    desc: '點選連線後，線段中點會出現紅色 ✕ 圓形按鈕；點按鈕或鍵盤按 Delete / Backspace 即刪除這條線。閘道分支：整條 condition 移除（含條件 label）。常見副作用：(a) 起點若是流程開始且只剩此線 → 儲存被擋 (b) 終點變成孤立節點 → 跳 warning (c) 閘道變成 < 2 條分支 → 跳 warning。**無 undo**，誤刪要手動拖一條新的。',
   },
   {
     title: '重設手動端點',

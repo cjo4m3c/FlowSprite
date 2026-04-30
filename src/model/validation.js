@@ -99,6 +99,16 @@ export function validateFlow(flow) {
       warnings.push(`${label}：包容分支至少需要 2 個目標`);
     }
 
+    // 3c-bis (2026-04-30): any gateway should have ≥2 branch conditions.
+    // If the user deletes a branch via "click connection → Delete" until only
+    // 1 remains, the gateway loses fork semantics and confuses future
+    // readers. Warning only — user can still save if they meant it
+    // (e.g., transitional editing state).
+    if (t.type === 'gateway' && (t.conditions || []).length < 2) {
+      const gtLabel = t.gatewayType === 'and' ? '並行' : t.gatewayType === 'or' ? '包容' : '排他';
+      warnings.push(`${label}（${gtLabel}閘道）：閘道應有至少 2 條分支，目前只有 ${(t.conditions || []).length} 條`);
+    }
+
     // 3d. Gateway without roleId — soft warning. Since gateway is shown in
     // dropdowns regardless of roleId, this catches the user before save.
     if (t.type === 'gateway' && !t.roleId) {
