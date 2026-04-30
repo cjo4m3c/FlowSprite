@@ -82,21 +82,27 @@ export function useDragReorder(items, onReorder) {
  *  trigger (draggable=true + onDragStart), keeping the rest of the row
  *  free for normal input/select interaction.
  *
- *  Caveat (fixed 2026-04-29): the inner <svg> needs `pointer-events: none`
- *  because SVG elements default to draggable=false and will swallow the
- *  drag attempt before it bubbles to the parent <div draggable=true>. The
- *  six-dot grid covers the whole DragHandle, so without this fix the user
- *  can't actually trigger drag from the handle. */
+ *  History (2026-04-29):
+ *    First attempt used <svg> for the dots, but SVG children's
+ *    pointer-events inheritance is inconsistent across Chromium versions
+ *    — even with `style={{ pointerEvents: 'none' }}` on the <svg>, the
+ *    inner <circle> can still intercept the mousedown that should start
+ *    the drag, leaving rows un-draggable. Replaced with a CSS grid of
+ *    plain <div>s (no SVG anywhere). The wrapper sets pointer-events:none
+ *    so every dot inherits it; pointer events fall through to the
+ *    surrounding `<div draggable=true>` and the drag fires reliably. */
 export function DragHandle(props) {
   return (
     <div {...props}
       className="flex items-center justify-center w-5 flex-shrink-0 cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 select-none">
-      <svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor"
-        style={{ pointerEvents: 'none' }}>
-        <circle cx="3" cy="3"  r="1.4"/><circle cx="7" cy="3"  r="1.4"/>
-        <circle cx="3" cy="8"  r="1.4"/><circle cx="7" cy="8"  r="1.4"/>
-        <circle cx="3" cy="13" r="1.4"/><circle cx="7" cy="13" r="1.4"/>
-      </svg>
+      <div className="grid grid-cols-2 gap-x-[3px] gap-y-[2px] pointer-events-none">
+        <span className="w-[3px] h-[3px] rounded-full bg-current" />
+        <span className="w-[3px] h-[3px] rounded-full bg-current" />
+        <span className="w-[3px] h-[3px] rounded-full bg-current" />
+        <span className="w-[3px] h-[3px] rounded-full bg-current" />
+        <span className="w-[3px] h-[3px] rounded-full bg-current" />
+        <span className="w-[3px] h-[3px] rounded-full bg-current" />
+      </div>
     </div>
   );
 }

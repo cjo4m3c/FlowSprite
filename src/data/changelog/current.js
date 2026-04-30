@@ -6,6 +6,17 @@
 export default [
   {
     date: '2026-04-29',
+    title: '修拖曳 (DragHandle 改用 div + CSS dots) + 移除「新增外部互動」按鈕',
+    items: [
+      '**緣由**：使用者：「現在編輯器內任務 / 泳道角色都無法拖曳換順序」+「先移除新增外部互動按鈕」。',
+      '**Bug 真因**：PR #106 在 `<svg>` 加 `style={{ pointerEvents: \'none\' }}` 應該讓子元素 `<circle>` 也繼承 — CSS `pointer-events` 規範是 inherited property。但**部分 Chromium 版本對 SVG 子元素的 pointer-events 繼承處理不一致**：即使父 svg 設 none，inner circle 仍可能 intercept mousedown，覆蓋父 div 的 `draggable=true` 啟動條件 → drag 不 fire。PR #106 的單行 fix 不夠 robust。',
+      '**正解 — DragHandle 改用 div + CSS dots**：把 `<svg>` 整個換成 `<div className="grid grid-cols-2 gap-x-[3px] gap-y-[2px] pointer-events-none">` 包 6 個 `<span className="w-[3px] h-[3px] rounded-full bg-current" />`。完全沒 SVG → 完全沒 SVG 規範繼承爭議。`pointer-events-none` 在 grid div 上，Tailwind class `bg-current` 讓 dots 用 parent text color（hover 變色保留）。視覺幾乎一樣，behavior 100% 可靠。',
+      '**移除「+ 新增外部互動」按鈕**：`DrawerContent.jsx` 設定流程 tab 上方紫底「+ 新增外部互動」按鈕區塊整個刪除。理由：(a) Excel 匯入沒辦法區分 interaction 類型（觀察點 5），既有資料 import 後一律 task type；(b) 使用者可透過 ContextMenu「轉換為...」→「外部互動」把任意 task 轉成 interaction；(c) UI 簡化。`onAddInteraction` prop 保留 in DrawerContent signature 不破壞 FlowEditor wiring（但變 unused，未來可清）。',
+      '**動到的檔案（3 個）**：`src/components/dragReorder.jsx`（DragHandle svg→div+spans）/ `src/components/FlowEditor/DrawerContent.jsx`（移除 add-interaction 按鈕）/ `src/data/changelog/current.js`（本條）。`build` 通過。',
+    ],
+  },
+  {
+    date: '2026-04-29',
     title: 'Excel 匯入：自動修正 L4 編號 + 合併 source 缺漏提醒（採方案 3 折衷）',
     items: [
       '**緣由**：使用者：「匯入時編號可以做初步檢核，但讓使用者匯入並主動提醒自動調整了哪些」+「條件合併來自多個分支」舊格式匯入時無法辨別來源 → 跳提醒讓使用者調整。',

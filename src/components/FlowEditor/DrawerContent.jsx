@@ -73,15 +73,9 @@ export function DrawerContent({ activeTab, liveFlow, displayLabels,
     const isDragging = dragIdx !== null;
     return (
       <div>
-        {/* "新增外部互動" stays — distinct task type, not covered by
-            InsertSlot's plain-task action. */}
-        <div className="mb-3">
-          <button onClick={onAddInteraction}
-            className="w-full py-2 text-base border border-dashed border-purple-400 text-purple-700 rounded-lg hover:bg-purple-50 transition-colors"
-            style={{ background: '#FAF5FF' }}>
-            + 新增外部互動
-          </button>
-        </div>
+        {/* External-interaction add button removed 2026-04-29 — Excel
+            import doesn't differentiate interaction type anyway, and the
+            user can convert any task via ContextMenu「轉換為...」/ 外部互動. */}
         <p className="text-sm text-gray-400 mb-3">▼ 點任務右側箭頭可展開說明、輸入、產出欄位；滑鼠移到任務間 / 列表前後可插入新任務</p>
         <div className="flex flex-col gap-2">
           {/* Top InsertSlot — covers "before first task" AND "empty list".
