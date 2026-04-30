@@ -419,6 +419,33 @@ export function useFlowActions({ liveFlow, patch }) {
   // PR I — reset a single connection's override (both exit and entry side).
   // Called from DiagramRenderer's "重設此連線端點" button when a connection
   // with override is selected.
+  // Remove a single connection from `fromTaskId`. `key` is the connection's
+  // overrideKey:
+  //   - regular task / l3activity: targetTaskId — filter task.nextTaskIds.
+  //   - gateway: condition.id — drop the entire condition entry (per spec
+  //     2026-04-30: deleting a branch removes both target + label).
+  // Always cleans `task.connectionOverrides[key]` to avoid stale overrides.
+  // Validation downstream (rule 1 / 4 / new gateway-arity) flags any
+  // resulting structural issues at save time; the user can always re-add.
+  function removeConnection(fromTaskId, key) {
+    const task = liveFlow.tasks.find(t => t.id === fromTaskId);
+    if (!task) return;
+    let updated;
+    if (task.type === 'gateway') {
+      const conds = (task.conditions || []).filter(c => c.id !== key);
+      updated = { ...task, conditions: conds };
+    } else {
+      const nexts = (task.nextTaskIds || []).filter(id => id !== key);
+      updated = { ...task, nextTaskIds: nexts };
+    }
+    if (updated.connectionOverrides?.[key]) {
+      const newOv = { ...updated.connectionOverrides };
+      delete newOv[key];
+      updated = { ...updated, connectionOverrides: newOv };
+    }
+    updateTask(fromTaskId, updated);
+  }
+
   function resetConnectionOverride(fromTaskId, key) {
     const task = liveFlow.tasks.find(t => t.id === fromTaskId);
     if (!task?.connectionOverrides?.[key]) return;
@@ -457,6 +484,7 @@ export function useFlowActions({ liveFlow, patch }) {
     removeTask,
     updateConnectionOverride,
     changeConnectionTarget,
+    removeConnection,
     resetConnectionOverride,
     resetAllOverrides,
     ...extra,
