@@ -107,3 +107,59 @@ export function makeTypeChange(task, kind) {
     connectionOverrides: {},
   };
 }
+
+/**
+ * Auto-sync rule (2026-04-30): tasks living in an external-role lane should
+ * use the 外部關係人互動 element (shapeType='interaction'); tasks in internal
+ * lanes use the regular L4 task element (shapeType='task'). Other element
+ * types (gateway / start / end / l3activity) are lane-agnostic and stay
+ * untouched by this sync.
+ *
+ * Trigger points:
+ *   1. Task's roleId changes (user moves task between lanes) → applyRoleChange
+ *   2. Role's type changes (user flips a lane internal↔external) → cascade
+ *      via syncTasksToRoles over all tasks in that role
+ *   3. Flow loaded from localStorage / Excel → one-time fixup via
+ *      syncTasksToRoles inside storage.migrateFlow
+ *
+ * Scope: only flips between shapeType 'task' ↔ 'interaction'. type stays
+ * 'task' in both cases (interaction is just a shape variant of a task,
+ * not a separate element kind for routing purposes).
+ */
+function isLaneSensitive(task) {
+  // Only regular tasks and interaction tasks swap based on lane.
+  // type='task' covers both shapeType='task' and shapeType='interaction'.
+  return task.type === 'task'
+    && (task.shapeType === 'task' || task.shapeType === 'interaction');
+}
+
+/** Move a task to a new role; auto-sync shapeType based on the role's type. */
+export function applyRoleChange(task, newRoleId, roles) {
+  if (!isLaneSensitive(task)) return { ...task, roleId: newRoleId };
+  const newRole = (roles || []).find(r => r.id === newRoleId);
+  const targetShape = newRole?.type === 'external' ? 'interaction' : 'task';
+  if (task.shapeType === targetShape && task.roleId === newRoleId) return task;
+  return { ...task, roleId: newRoleId, shapeType: targetShape };
+}
+
+/**
+ * Cascade-sync every task's shapeType against the current roles list. Used
+ * when a role's type flips (one role change → all of its tasks need to swap
+ * shape) and as a one-time fixup on load. Idempotent — returns the same
+ * array reference when no changes needed.
+ */
+export function syncTasksToRoles(tasks, roles) {
+  if (!Array.isArray(tasks) || !Array.isArray(roles)) return tasks;
+  const roleById = new Map(roles.map(r => [r.id, r]));
+  let changed = false;
+  const next = tasks.map(t => {
+    if (!isLaneSensitive(t) || !t.roleId) return t;
+    const role = roleById.get(t.roleId);
+    if (!role) return t;
+    const targetShape = role.type === 'external' ? 'interaction' : 'task';
+    if (t.shapeType === targetShape) return t;
+    changed = true;
+    return { ...t, shapeType: targetShape };
+  });
+  return changed ? next : tasks;
+}

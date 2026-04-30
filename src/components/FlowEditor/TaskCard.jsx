@@ -2,7 +2,7 @@ import { useState } from 'react';
 import ConnectionSection from '../ConnectionSection.jsx';
 import { ReorderButtons } from '../reorderButtons.jsx';
 import { CONN_BADGE, CONN_ROW_BG } from '../../utils/taskDefs.js';
-import { ELEMENT_TYPES, detectElementKind, makeTypeChange } from '../../utils/elementTypes.js';
+import { ELEMENT_TYPES, detectElementKind, makeTypeChange, applyRoleChange } from '../../utils/elementTypes.js';
 import { formatConnection } from '../../model/connectionFormat.js';
 
 // ── TaskCard ────────────────────────────────────────
@@ -56,8 +56,9 @@ export default function TaskCard({ task, roles, allTasks, displayLabels, onUpdat
           )}
         </div>
 
-        {/* col 3: Role */}
-        <select value={task.roleId} onChange={e => onUpdate({ ...task, roleId: e.target.value })}
+        {/* col 3: Role — applyRoleChange auto-syncs shapeType when moving
+            between internal / external lanes (task ↔ interaction). */}
+        <select value={task.roleId} onChange={e => onUpdate(applyRoleChange(task, e.target.value, roles))}
           className="w-40 flex-shrink-0 px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-400">
           <option value="">角色 *</option>
           {roles.filter(r => r.name).map(r => <option key={r.id} value={r.id}>{r.name}</option>)}

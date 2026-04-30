@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { generateId } from '../utils/storage.js';
 import { ReorderButtons, moveItem } from './reorderButtons.jsx';
+import { syncTasksToRoles } from '../utils/elementTypes.js';
 import {
   makeRole, makeTask,
   applySequentialDefaults,
@@ -102,7 +103,12 @@ function Step2({ data, onChange }) {
     onChange({ roles: data.roles.filter(r => r.id !== id) });
   }
   function updateRole(id, field, val) {
-    onChange({ roles: data.roles.map(r => r.id === id ? { ...r, [field]: val } : r) });
+    const newRoles = data.roles.map(r => r.id === id ? { ...r, [field]: val } : r);
+    // Cascade-sync shapeType when a role flips internal↔external (no-op for
+    // other field changes since syncTasksToRoles only looks at roles[].type).
+    const patch = { roles: newRoles };
+    if (field === 'type') patch.tasks = syncTasksToRoles(data.tasks || [], newRoles);
+    onChange(patch);
   }
 
   return (

@@ -99,17 +99,11 @@ export function validateFlow(flow) {
       warnings.push(`${label}：闘道未指定泳道角色`);
     }
 
-    // 3e. External interaction on internal-role lane — soft warning.
-    //     "外部互動" tasks (shapeType=interaction) describe touchpoints with
-    //     people / systems outside the org and conventionally sit on
-    //     external-role lanes. If the user puts one on an internal lane they
-    //     get a heads-up but can save anyway (per spec PR-2026-04-29).
-    if (t.shapeType === 'interaction' && t.roleId) {
-      const role = (flow.roles || []).find(r => r.id === t.roleId);
-      if (role && role.type === 'internal') {
-        warnings.push(`${label}：外部互動任務「${t.name || '（未命名）'}」放在內部角色泳道「${role.name || '（未命名）'}」，建議改放外部角色泳道`);
-      }
-    }
+    // 3e: previously warned when shapeType=interaction sat on an internal
+    // lane. Removed 2026-04-30: shapeType is now auto-synced to role.type
+    // via applyRoleChange / syncTasksToRoles, so this mismatch can no longer
+    // occur from the UI. Excel imports default to internal/task; the load
+    // migration in storage.js fixes any pre-existing mismatches.
 
     // 4. Every node except start must have incoming (already blocking for end,
     //    this catches orphan middle nodes).

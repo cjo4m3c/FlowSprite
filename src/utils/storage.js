@@ -1,3 +1,5 @@
+import { syncTasksToRoles } from './elementTypes.js';
+
 const FLOWS_KEY = 'bpm_flows_v1';
 
 function normalizeNumber(raw) {
@@ -176,6 +178,12 @@ function migrateFlow(flow) {
   tasks = migrateSubprocessSuffix(tasks);
   tasks = migrateMergeConnectionType(tasks);
   tasks = cleanStaleOverrides(tasks);
+  // 2026-04-30: one-time fixup so tasks living in external-role lanes use
+  // shapeType='interaction' and tasks in internal lanes use shapeType='task'.
+  // After this, the auto-sync runs on every roleId / role.type edit so
+  // mismatches don't reappear. Idempotent — returns same array when already
+  // in sync (most loads after the first).
+  tasks = syncTasksToRoles(tasks, flow.roles || []);
   return { ...flow, l3Number: normalizeNumber(flow.l3Number), tasks };
 }
 
