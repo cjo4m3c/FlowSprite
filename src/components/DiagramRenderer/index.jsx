@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, forwardRef, useImperativeHandle } from 'react';
 import { toPng } from 'html-to-image';
-import { computeLayout } from '../../diagram/layout.js';
+import { computeLayout, routeArrow } from '../../diagram/layout.js';
 import { detectOverrideViolations } from '../../diagram/violations.js';
 import { LAYOUT, COLORS } from '../../diagram/constants.js';
 import { exportDrawio } from '../../utils/drawioExport.js';
@@ -15,6 +15,38 @@ import {
 import { useDragEndpoint } from './useDragEndpoint.js';
 
 const { LANE_HEADER_W, TITLE_H } = LAYOUT;
+
+// Geometric midpoint of a polyline by cumulative segment length. Returns
+// {x, y} on the actual line at exactly half its total length — what the
+// user perceives as "the middle of this line", regardless of how many
+// corridor / cross-lane bends the route has. Used to anchor the selected-
+// connection delete badge so it always sits on top of the line.
+function polylineMidpoint(pts) {
+  if (!pts || pts.length < 2) return null;
+  const lens = [];
+  let total = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const dx = pts[i][0] - pts[i - 1][0];
+    const dy = pts[i][1] - pts[i - 1][1];
+    const l = Math.hypot(dx, dy);
+    lens.push(l);
+    total += l;
+  }
+  if (total === 0) return { x: pts[0][0], y: pts[0][1] };
+  const half = total / 2;
+  let acc = 0;
+  for (let i = 0; i < lens.length; i++) {
+    if (acc + lens[i] >= half) {
+      const t = (half - acc) / lens[i];
+      return {
+        x: pts[i][0] + t * (pts[i + 1][0] - pts[i][0]),
+        y: pts[i][1] + t * (pts[i + 1][1] - pts[i][1]),
+      };
+    }
+    acc += lens[i];
+  }
+  return { x: pts[pts.length - 1][0], y: pts[pts.length - 1][1] };
+}
 
 const DiagramRenderer = forwardRef(function DiagramRenderer({ flow, autoExportPng = false,
   onExportDone = null, onUpdateOverride = null, onChangeTarget = null,
@@ -272,9 +304,14 @@ const DiagramRenderer = forwardRef(function DiagramRenderer({ flow, autoExportPn
             const tgtPort = to[selectedConn.entrySide];
             const srcDragging = dragInfo?.endpoint === 'source';
             const tgtDragging = dragInfo?.endpoint === 'target';
-            const deletePt = (srcPort && tgtPort)
-              ? { x: (srcPort.x + tgtPort.x) / 2, y: (srcPort.y + tgtPort.y) / 2 }
+            // Compute the actual rendered polyline so the delete badge sits
+            // on top of the line — geometric src/tgt midpoint drifts off the
+            // line for routes that go through corridors or cross lanes.
+            const polyline = (srcPort && tgtPort)
+              ? routeArrow(from, to, selectedConn.exitSide, selectedConn.entrySide,
+                           selectedConn.laneBottomY, selectedConn.laneTopCorridorY)
               : null;
+            const deletePt = polyline ? polylineMidpoint(polyline) : null;
             return (
               <>
                 {srcPort && (

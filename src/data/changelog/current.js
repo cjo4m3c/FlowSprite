@@ -6,6 +6,17 @@
 export default [
   {
     date: '2026-04-30',
+    title: '修連線刪除 ✕ 按鈕對長連線飄太遠 — 改用 polyline 真實中點',
+    items: [
+      '**緣由**：使用者：「跨很多任務或是跨比較多泳道的線，顯示出的delete icon 會離線段很遠，很不直覺，使用者也很難找到。我希望可以在線段的正中間」。PR #130 用 srcPort 與 tgtPort 的幾何中點當 ✕ 位置，對短直線 OK，但跨欄 / 跨列 / 走 top-bottom corridor 的路徑會大幅繞路 — geometric 直線中點落在實際 polyline 之外，使用者要在線旁找一個飄走的 ✕。',
+      '**修法**：`DiagramRenderer/index.jsx` 加 `polylineMidpoint(pts)` 純函式 — 算每段 segment 長度、累加、找到 total/2 那一段、線性插值得到真實「半長處」座標。等於 SVG `getTotalLength + getPointAtLength` 的純計算版（不需要 DOM ref）。',
+      '**整合**：選中連線時直接呼叫已 export 的 `routeArrow(from, to, exitSide, entrySide, laneBottomY, laneTopCorridorY)` 取得 polyline pts → `polylineMidpoint(pts)` 算出 ✕ 位置。`arrows.jsx ConnectionArrow` 內部也呼叫 routeArrow，這裡再算一次屬重複計算（< 1ms / 連線、僅在「選中時」執行）— 為避免 prop drilling 把 polyline 從 ConnectionArrow 暴露上來，可接受。',
+      '**動到的檔案（2 個）**：`src/components/DiagramRenderer/index.jsx`（+`polylineMidpoint` helper 30 行 + 改 `deletePt` 計算路徑 + import `routeArrow`）/ `src/data/changelog/current.js`（本條）。`build` 通過。',
+      '**驗證情境**：(a) 同泳道短直線 → ✕ 在線中點 ✓（行為跟以前一樣）(b) 跨 3 欄走 top corridor → ✕ 在 corridor 段中央，不在 src-tgt 連線外 ✓ (c) 跨 4 列走 bottom corridor → 同上 ✓ (d) loop-return 反向邊 → ✕ 在繞路中段 ✓ (e) 不影響 endpoint handle / 拖端點 / 紅 ✕ 點擊邏輯 ✓',
+    ],
+  },
+  {
+    date: '2026-04-30',
     title: '流程圖點選線段刪除 + 閘道 <2 分支 warning + undo 列入長期 backlog',
     items: [
       '**緣由**：使用者：「我想要新增一個功能，是使用者可以點選流程圖上的線段後刪除」。既有基礎建設（連線選取 + 端點 handle）已有，補上刪除 action + UI 觸發點即可。',
