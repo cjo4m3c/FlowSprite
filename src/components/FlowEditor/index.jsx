@@ -40,6 +40,16 @@ export default function FlowEditor({ flow, onBack, onSave }) {
   // Undo/redo stack (50 steps, debounced 500ms, cleared on save).
   // Snapshot-based — push current liveFlow before mutation, restore on undo.
   const [undoStack, setUndoStack] = useState(createUndoStack);
+  // Save-reminder pulse: 'none' / 'brief' (8s burst) / 'continuous' (until
+  // user edits or saves). Two trigger paths drive it — see useEffects below.
+  const [pulseMode, setPulseMode] = useState('none');
+  // Tick counter — bumps on every patch so the idle-timer effect can react
+  // (hasChanges stays true throughout an edit session, so we need a finer
+  // signal to "user is still active").
+  const [editStamp, setEditStamp] = useState(0);
+  // Anchor for the 3-min / 5-min brief reminders: timestamp of the FIRST
+  // edit since last save. Cleared on save.
+  const editingStartRef = useRef(null);
   // Ref to DiagramRenderer's imperative export API (forwardRef +
   // useImperativeHandle exposes exportPng / exportDrawio / exportExcel).
   // Used by the Header download dropdown — each item calls
@@ -81,6 +91,7 @@ export default function FlowEditor({ flow, onBack, onSave }) {
     setUndoStack(prev => pushUndo(prev, structuredClone(liveFlow)));
     setLiveFlow(prev => ({ ...prev, ...updates }));
     setHasChanges(true);
+    setEditStamp(s => s + 1);  // resets the idle reminder timer
   }
 
   function handleUndo() {
@@ -133,6 +144,10 @@ export default function FlowEditor({ flow, onBack, onSave }) {
     // Per user spec 2026-05-03: clear undo + redo stacks on save. The saved
     // state is the new baseline — undo can't cross a save checkpoint.
     setUndoStack(createUndoStack());
+    // Save-reminder reset — pulse stops, edit-duration anchor restarts on
+    // next edit (so 3min/5min timers re-trigger from a fresh starting point).
+    setPulseMode('none');
+    editingStartRef.current = null;
     onSuccess?.();
   }
 
@@ -158,6 +173,41 @@ export default function FlowEditor({ flow, onBack, onSave }) {
     return () => window.removeEventListener('keydown', onKey);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [saveModal, resetAllModal, undoStack, liveFlow]);
+
+  // Save reminder — idle path: while there are unsaved changes, every edit
+  // resets a 2-min timer; if it fires the save button enters 'continuous'
+  // pulse until the user resumes editing or saves.
+  useEffect(() => {
+    if (!hasChanges || saveModal || resetAllModal) return;
+    // Any new edit → drop continuous pulse (user is active again).
+    setPulseMode(prev => (prev === 'continuous' ? 'none' : prev));
+    const t = setTimeout(() => setPulseMode('continuous'), 2 * 60 * 1000);
+    return () => clearTimeout(t);
+  }, [editStamp, hasChanges, saveModal, resetAllModal]);
+
+  // Save reminder — edit-duration path: anchored at first edit since last
+  // save, fire a brief 8-second pulse at the 3-min and 5-min marks. Brief
+  // doesn't override continuous (continuous is the more urgent state).
+  useEffect(() => {
+    if (!hasChanges) {
+      editingStartRef.current = null;
+      return;
+    }
+    if (editingStartRef.current == null) editingStartRef.current = Date.now();
+    const elapsed = Date.now() - editingStartRef.current;
+    const triggerBrief = () => {
+      setPulseMode(prev => (prev === 'continuous' ? prev : 'brief'));
+      setTimeout(() => {
+        setPulseMode(prev => (prev === 'brief' ? 'none' : prev));
+      }, 8000);
+    };
+    const timers = [];
+    const remain3 = 3 * 60 * 1000 - elapsed;
+    const remain5 = 5 * 60 * 1000 - elapsed;
+    if (remain3 > 0) timers.push(setTimeout(triggerBrief, remain3));
+    if (remain5 > 0) timers.push(setTimeout(triggerBrief, remain5));
+    return () => timers.forEach(clearTimeout);
+  }, [hasChanges]);
 
   // Shared validate-then-save flow used by both the header save button and
   // the three diagram export buttons (PNG / drawio / Excel). Callers pass
@@ -201,7 +251,8 @@ export default function FlowEditor({ flow, onBack, onSave }) {
         onSave={handleSave} onResetAllConfirm={() => setResetAllModal(true)}
         downloadHandlers={downloadHandlers}
         onUndo={handleUndo} onRedo={handleRedo}
-        canUndo={canUndoStack(undoStack)} canRedo={canRedoStack(undoStack)} />
+        canUndo={canUndoStack(undoStack)} canRedo={canRedoStack(undoStack)}
+        savePulse={pulseMode} />
 
       <main className="px-4 py-6 w-full max-w-full">
         {/* Diagram — always visible. ref exposes exportPng/Drawio/Excel
