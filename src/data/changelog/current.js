@@ -5,7 +5,21 @@
  */
 export default [
   {
-    date: '2026-04-30',
+    date: '2026-05-03',
+    title: 'HelpPanel 列點化 + 補齊驗證規則 + 日期補正 + PNG 匯出隱藏 override 橘點',
+    items: [
+      '**緣由**：使用者四個訴求合併到本 PR — (a)「規則說明那裡，內容比較多的段落用列點顯示」(b)「changelog 5/3 改的都發成 4/30」(c)「列點列出所有 excel 檢核條件、儲存檢核條件」(d)「下載的 png 會顯示有編輯過的橘色圓點點，可以不要有嗎」。',
+      '**Step 1 — `HelpPanel.jsx` 加 `<Content>` 組件**：value 是 string → render `<div>{text}</div>`（既有行為），value 是 array → render `<ul class="list-disc pl-5 space-y-1">`。Wire 到 ELEMENTS.purpose / VALIDATION.detail / EDITABLE_ACTIONS.desc / FORBIDDEN_RULES.desc / EXPORTS.note 五處。資料端決定列點 or 段落。',
+      '**Step 2 — `helpPanelData.js` 內容列點化**：把長且帶子項的條目改成陣列：(a) ELEMENTS — 外部關係人互動 / L3 活動 / 排他 / 並行 / 包容閘道 共 5 項 (b) VALIDATION — 開始事件不能被連接 / 多個開始結束 / 閘道 ≥2 條分支 / 外部互動建議 / 合併目標自動偵測 / 連線端點不能 IN+OUT / Excel 編號規則系列 共 9 項 (c) EDITABLE_ACTIONS — 點任務元件 / 刪除連線 共 2 項 (d) FORBIDDEN_RULES — L4 編號規則 1 項。短條目維持單行。',
+      '**Step 3 — VALIDATION 補齊**：audit 既有 helpPanelData 跟 `model/validation.js` 程式邏輯，補上 4 條：(a) blocking「連線端點不能同時有進入與出發」(b) warning「多個開始 / 結束事件」(c) warning「閘道未指定泳道角色」(d) warning「迴圈返回必須指定目標」。Import 段把單一「閘道 / 子流程前綴必對應」拆成完整的「L3/L4 編號格式」+「開始/結束編號」+ `_g` / `_s` / `_w` 三個獨立條目 + 共用前綴對應條目。`連線不能跨過任務矩形` 補進 warning。**共 22 條**，分 blocking / warning / import 三層。',
+      '**Step 4 — Changelog 日期補正 4/30→5/3**：實際是 2026-05-03 開發但 13 條 entry 都寫成 2026-04-30。`current.js` (5) + `c23.js` (8) 全部 sed 替換 + freeze header comment 也補上。',
+      '**Step 5 — PNG 匯出隱藏 override 橘點（`DiagramRenderer/index.jsx`）**：使用者下載 PNG 時不需看到「編輯過」的元素標記。`OverrideIndicators` 包進新的 `<g ref={overrideIndicatorsRef}>` 容器，`doPngExport` 在 `toPng` 前把 `style.display = "none"`，匯出後 `finally` 還原。Dashboard 那邊 PNG 預覽是 `editable=false`，本來就不渲染 OverrideIndicators，不受影響。',
+      '**動到的檔案（5 個）**：`src/components/HelpPanel.jsx`（+`<Content>` helper + 5 處呼叫）/ `src/data/helpPanelData.js`（ELEMENTS / VALIDATION / EDITABLE_ACTIONS / FORBIDDEN_RULES 多項列點化 + VALIDATION 補 4 條 + import 細項）/ `src/components/DiagramRenderer/index.jsx`（+overrideIndicatorsRef + 包 `<g>` + doPngExport 隱藏 / 還原）/ `src/data/changelog/current.js`（5 條 4/30→5/3 + 本條）/ `src/data/changelog/c23.js`（8 條 + freeze header 4/30→5/3）。`build` 通過。',
+      '**驗證情境**：(a) 規則說明 ELEMENTS 5 個元件 purpose 列點顯示 ✓ (b) VALIDATION 22 條（6 blocking + 9 warning + 7 import）長 detail 列點 ✓ (c) EDITABLE_ACTIONS「刪除連線」7 子項 bullet ✓ (d) ChangelogPanel 13 條 entry 顯示 2026-05-03 ✓ (e) 編輯頁下載 PNG → 圖中無橘色 override 點點，網頁畫面 override 點仍然在 ✓',
+    ],
+  },
+  {
+    date: '2026-05-03',
     title: '流程圖 3 個微調：start/end 不再下方顯示說明 / start label 防壓泳道頭 / L4 編號白底降透明度',
     items: [
       '**緣由**：使用者：「(1) 開始事件、結束事件現在下方也會顯示任務重點說明，但是 hover 也會顯示，我希望保留 hover 就好，下方的說明移除 (2) 開始事件的說明文字很容易跟左側角色區塊重疊、導致看不到字 (3) 每個任務上編號，在有跟端點重疊的時候，現行有一個白色底色，但是會有點看不見箭頭，因此我希望可以提高一點透明度」。',
@@ -17,7 +31,7 @@ export default [
     ],
   },
   {
-    date: '2026-04-30',
+    date: '2026-05-03',
     title: '外部關係人互動 `_w` 編號 + 不對稱 sync + 流程圖隱藏編號（一致業務規則重整）',
     items: [
       '**緣由**：使用者：「我希望調整『外部關係人互動』的編號方式與規則 — 跟現在閘道的編號邏輯一樣用『前一個L4編號＋後綴』的方式，後綴為 `_w`」+「Excel 匯入有 `_w` 但對應角色 internal → 改為跳提醒讓使用者檢查，仍然可以匯入」+「外部互動在流程圖上不顯示編號，但會顯示在表格中」。把 `_w` 加進跟 `_g`/`_s` 同一個後綴 family。',
@@ -35,7 +49,7 @@ export default [
     ],
   },
   {
-    date: '2026-04-30',
+    date: '2026-05-03',
     title: '修連線刪除 ✕ 按鈕對長連線飄太遠 — 改用 polyline 真實中點',
     items: [
       '**緣由**：使用者：「跨很多任務或是跨比較多泳道的線，顯示出的delete icon 會離線段很遠，很不直覺，使用者也很難找到。我希望可以在線段的正中間」。PR #130 用 srcPort 與 tgtPort 的幾何中點當 ✕ 位置，對短直線 OK，但跨欄 / 跨列 / 走 top-bottom corridor 的路徑會大幅繞路 — geometric 直線中點落在實際 polyline 之外，使用者要在線旁找一個飄走的 ✕。',
@@ -46,7 +60,7 @@ export default [
     ],
   },
   {
-    date: '2026-04-30',
+    date: '2026-05-03',
     title: '流程圖點選線段刪除 + 閘道 <2 分支 warning + undo 列入長期 backlog',
     items: [
       '**緣由**：使用者：「我想要新增一個功能，是使用者可以點選流程圖上的線段後刪除」。既有基礎建設（連線選取 + 端點 handle）已有，補上刪除 action + UI 觸發點即可。',
@@ -61,7 +75,7 @@ export default [
     ],
   },
   {
-    date: '2026-04-30',
+    date: '2026-05-03',
     title: 'changelog freeze c23 — current.js reset 避免並行 PR 衝突',
     items: [
       '**緣由**：current.js 累積到 ~19KB（PR #122 / #123 / #124 / PR-A #126 / PR-B #127 / PR-C #128 六條合計），遠超 CLAUDE.md §4 訂的 7KB freeze threshold。歷史教訓：PR #119 vs #118 在 current.js 撞 conflict 過、要手動 rebase。先 freeze c23，避免下次兩個 feature 並行 PR 同樣再撞一次。',

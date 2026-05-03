@@ -29,6 +29,22 @@ function Section({ title, children }) {
   );
 }
 
+/**
+ * Render long-form content as either a single paragraph (string) or a
+ * bullet list (string[]). Lets helpPanelData mark which entries deserve
+ * scannable bullets vs. flowing prose. Strings stay backward-compatible.
+ */
+function Content({ value, className = '' }) {
+  if (Array.isArray(value)) {
+    return (
+      <ul className={`list-disc pl-5 space-y-1 ${className}`}>
+        {value.map((item, i) => <li key={i}>{item}</li>)}
+      </ul>
+    );
+  }
+  return <div className={className}>{value}</div>;
+}
+
 export default function HelpPanel() {
   const [open, setOpen] = useState(false);
 
@@ -121,7 +137,7 @@ export default function HelpPanel() {
                         <div className="text-gray-500 text-xs mb-0.5">
                           形狀：{el.shape}　顏色：{el.color}
                         </div>
-                        <div>{el.purpose}</div>
+                        <Content value={el.purpose} />
                       </div>
                     </div>
                   ))}
@@ -147,7 +163,7 @@ export default function HelpPanel() {
                         </div>
                         <div>
                           <div className={`font-medium ${style.ruleText}`}>{v.rule}</div>
-                          <div className="text-gray-500 text-xs mt-0.5">{v.detail}</div>
+                          <Content value={v.detail} className="text-gray-500 text-xs mt-0.5" />
                         </div>
                       </div>
                     );
@@ -164,7 +180,7 @@ export default function HelpPanel() {
                   {EDITABLE_ACTIONS.map((a, i) => (
                     <div key={i} className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
                       <div className="font-medium text-blue-800 mb-0.5">{a.title}</div>
-                      <div className="text-gray-600 text-xs leading-relaxed">{a.desc}</div>
+                      <Content value={a.desc} className="text-gray-600 text-xs leading-relaxed" />
                     </div>
                   ))}
                 </div>
@@ -177,7 +193,7 @@ export default function HelpPanel() {
                         <span className="font-medium text-red-800">{r.title}</span>
                         <span className="text-xs font-mono px-1.5 py-0.5 rounded bg-red-100 text-red-700">{r.impact}</span>
                       </div>
-                      <div className="text-gray-600 text-xs mt-0.5 leading-relaxed">{r.desc}</div>
+                      <Content value={r.desc} className="text-gray-600 text-xs mt-0.5 leading-relaxed" />
                     </div>
                   ))}
                 </div>
@@ -196,7 +212,7 @@ export default function HelpPanel() {
                         <span className="font-mono text-xs text-green-600">{ex.ext}</span>
                       </div>
                       <div className="text-xs text-gray-500 mt-0.5">支援工具：{ex.tool}</div>
-                      <div className="text-gray-600 text-xs mt-0.5">{ex.note}</div>
+                      <Content value={ex.note} className="text-gray-600 text-xs mt-0.5" />
                     </div>
                   ))}
                 </div>

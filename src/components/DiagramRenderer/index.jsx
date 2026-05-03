@@ -53,6 +53,10 @@ const DiagramRenderer = forwardRef(function DiagramRenderer({ flow, autoExportPn
   onWireThroughGateway = null, onRemoveConnection = null,
   onResetOverride = null, onTaskClick = null, highlightedTaskId = null }, ref) {
   const exportRef = useRef(null);
+  // Override-indicator wrapper — hidden during PNG export so the captured
+  // image shows only the final routing, not editing artefacts (the amber
+  // dots on hand-routed endpoints).
+  const overrideIndicatorsRef = useRef(null);
   const svgRef = useRef(null);
   // Sticky-role-header support: when the diagram is wider than the viewport,
   // the user scrolls horizontally — but the role-header column on the left
@@ -181,6 +185,12 @@ const DiagramRenderer = forwardRef(function DiagramRenderer({ flow, autoExportPn
   async function doPngExport() {
     if (!exportRef.current) return;
     resetStickyForExport();
+    // Hide editing artefacts (override indicator dots) during export so
+    // the captured PNG shows only the final routing, not which lines
+    // were hand-routed. Dashboard preview renders editable=false so its
+    // PNG path doesn't render OverrideIndicators in the first place.
+    const ovEl = overrideIndicatorsRef.current;
+    if (ovEl) ovEl.style.display = 'none';
     try {
       const dataUrl = await toPng(exportRef.current, { pixelRatio: 2, backgroundColor: '#ffffff' });
       const a = document.createElement('a');
@@ -189,6 +199,8 @@ const DiagramRenderer = forwardRef(function DiagramRenderer({ flow, autoExportPn
       a.click();
     } catch (e) {
       alert(`PNG 匯出失敗：${e?.message || e}`);
+    } finally {
+      if (ovEl) ovEl.style.display = '';
     }
   }
 
@@ -283,9 +295,11 @@ const DiagramRenderer = forwardRef(function DiagramRenderer({ flow, autoExportPn
           )}
 
           {editable && (
-            <OverrideIndicators
-              connections={connections} positions={positions}
-              overrideFlagOf={overrideFlagOf} />
+            <g ref={overrideIndicatorsRef}>
+              <OverrideIndicators
+                connections={connections} positions={positions}
+                overrideFlagOf={overrideFlagOf} />
+            </g>
           )}
 
           {editable && dragInfo && dragInfo.proposedSide && (
