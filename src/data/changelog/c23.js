@@ -1,11 +1,11 @@
 /**
  * Changelog c23 — frozen archive chunk (newest first within file).
- * Frozen on 2026-05-03 when current.js reached ~19KB (>7KB threshold)
+ * Frozen on 2026-04-30 when current.js reached ~19KB (>7KB threshold)
  * after PR #122 / #123 / #124 / PR-A #126 / PR-B #127 / PR-C #128.
  */
 export default [
   {
-    date: '2026-05-03',
+    date: '2026-04-30',
     title: 'PR-C：Top insert slot 修語意 — addOtherBefore / addL3ActivityBefore / insertGatewayBefore',
     items: [
       '**緣由**：code review P1-2「top insert slot 對非 task 類型語意錯」— 編輯器 InsertPicker 第一格（`index <= 0`）對 task 類型走 `addTaskBefore` 正確、但對 start/end/interaction/l3activity/gateway 五種 fallback 成 `tasks[0]` + 呼叫 `*After`，結果新元件落在 tasks[0] **後面**而非前面。視覺位置跟使用者點擊位置不一致，且每加新元件種類就要重複此 hack。',
@@ -17,7 +17,7 @@ export default [
     ],
   },
   {
-    date: '2026-05-03',
+    date: '2026-04-30',
     title: 'PR-B：ELEMENT_TYPES schema 收斂 — 4 個 UI view 讀同一份元件型錄',
     items: [
       '**緣由**：code review P2-4「element-type catalog 三處重複」— 元件清單在 elementTypes.js 是「canonical」，但 DrawerContent InsertPicker hard-code 8 個 `<option>` + switch helperText、ContextMenu OtherSubForm hard-code 3 個（start/end/interaction）含 `hint` 文字、ConvertSubForm hard-code 8 個含 `match` predicate（重複 `detectElementKind` 邏輯）。新增 / 修改 / 刪除元件種類要改 4 個地方，正是使用者要避免的「修一個改很多」痛點。',
@@ -33,7 +33,7 @@ export default [
     ],
   },
   {
-    date: '2026-05-03',
+    date: '2026-04-30',
     title: 'PR-A：修兩個資料模型 bug — 新建 start 不能有 incoming / 新建 interaction 由 lane 決定 shape',
     items: [
       '**緣由**：使用者轉貼 code review，4 個 finding 中的 P1-1 + P1-3 是真實資料模型 bug — 新建立的元件直接違反系統其他層假設的 invariant（BPMN start no-incoming、PR #119 lane-driven shape）。Refactor 路徑 PR-A，先修兩個資料 bug，後續 PR-B/-C/-D 才做擴充性 refactor。',
@@ -45,7 +45,7 @@ export default [
     ],
   },
   {
-    date: '2026-05-03',
+    date: '2026-04-30',
     title: '新增閘道操作拉齊：tooltip / 編輯器都可從預設 2 條擴充到 N 條分支',
     items: [
       '**緣由**：使用者：「我希望拉齊新增閘道的操作：(1) 在tooltip 新增閘道時，預設增加兩條線，但是使用者也可以像編輯器操作一樣，可以自行新增多條 (2) 在編輯器中，點選新增閘道後預設就會增加兩個條件編輯列，使用者也依樣可以自行新增多條」。對應 backlog 條目 U「插入閘道操作邏輯拉齊」。',
@@ -58,7 +58,7 @@ export default [
     ],
   },
   {
-    date: '2026-05-03',
+    date: '2026-04-30',
     title: '流程圖文字 UI 微調：任務元件行距 / 條件分支標籤白底寬度 / L4 編號白底',
     items: [
       '**緣由**：使用者提了 3 個 UI 問題：(1) 任務元件三行字擠在一起、中英文混排特別擠 (2) 條件分支連線上的標籤白底太大（固定 40×22px）跟字長不匹配 (3) 任務元件上方端點有線連入/連出時，編號文字直接被線穿過去看不清楚。',
@@ -73,7 +73,7 @@ export default [
     ],
   },
   {
-    date: '2026-05-03',
+    date: '2026-04-30',
     title: '交接文件全面整理：HANDOVER / README / CLAUDE.md / orphans 同步到當前 main 狀態',
     items: [
       '**緣由**：使用者：「請檢查所有的交接檔案都有在最新，確保下一個人要看的時候完全知道怎麼操作，可以從0開始無縫接手」+「業務規則主檔、change log 也要在最新喔」。今日 8 個 PR（#114-#121）merge 後，多份交接文件還停留在 4/29 之前的狀態，新接手者讀會 broken。',

@@ -5,6 +5,19 @@
  */
 export default [
   {
+    date: '2026-05-04',
+    title: '閘道規則拉齊（≥2 分支三類一致 / XOR 條件必填、AND/OR 選填）+ 修上次誤改的 changelog 日期',
+    items: [
+      '**緣由**：使用者：「我希望拉齊三種閘道的規則 — (1) 預設要至少兩條分支，可自行增加分支，小於兩個分支儲存時跳提醒 (2) 都可選填條件，但排他閘道如果沒有寫條件儲存時要跳提醒，並行和包容閘道則不強制填寫條件、也不跳提醒」+「日期跟下一個 PR 一起修」（PR #134 把 4/30 都誤改成 5/3）。',
+      '**Step 1 — 拿掉 OR-only 的「至少 2 個目標」warning**：`model/validation.js` 原 rule 3c 是 `inclusive-branch` 專屬 + 計 wired target 數 (`conditions.filter(c => c.nextTaskId).length`)，跟使用者新規則「三類閘道規則一致」衝突。砍掉，由 rule 3c-bis（PR #130 加的「任何閘道 < 2 條 conditions」）統一接管。`rule 1`（節點必須有 next）+ rule 3c-bis 已經足夠 cover OR 的編輯不完整情境。',
+      '**Step 2 — 加「XOR 條件標籤必填」warning**：`model/validation.js` rule 3c 重寫，只對 `conditional-branch` 觸發。掃 `t.conditions` 找空 `label`，數 > 0 時跳 warning「（排他閘道）：有 N 個分支沒有填寫條件標籤（XOR 需要明確的觸發條件）」。AND / OR 不檢查 label。',
+      '**Step 3 — `helpPanelData` ELEMENTS 三閘道描述更新**：每個閘道 purpose 列點加「預設 2 條分支可自行新增 N 條（≥2 否則 warning）」+ XOR 加「條件標籤必填」/ AND / OR 加「條件標籤選填」。VALIDATION 內「閘道應有至少 2 條分支」detail 改成「三類規則一致」+ 移除「OR 另有至少 2 個目標 warning」誤導；新加「排他閘道分支必須填寫條件標籤」warning 條目，含 XOR / AND / OR 差異說明。',
+      '**Step 4 — Changelog 日期回正**：PR #134 把所有 4/30 都改成 5/3 是太粗暴。對照 git log first-parent merge 日期：PR #122-#131 真的都是 4/30，PR #132/#133 才是 5/3，PR #134 是 5/4。`current.js` 把 #129/#130/#131 三條改回 4/30；`c23.js` 全部 8 條（PR #122-#128）改回 4/30 + 檔頭 freeze comment 改回「Frozen on 2026-04-30」。本條本身保留 5/4。',
+      '**動到的檔案（4 個）**：`src/model/validation.js`（rule 3c 重寫）/ `src/data/helpPanelData.js`（ELEMENTS 三閘道 + VALIDATION 兩條）/ `src/data/changelog/current.js`（3 條日期 + 本條）/ `src/data/changelog/c23.js`（8 條日期 + freeze comment）。`build` 通過。',
+      '**驗證情境**：(a) XOR 閘道 2 條分支但 1 個 label 空 → 儲存跳 warning「（排他閘道）：有 1 個分支沒有填寫條件標籤」 ✓ (b) AND 閘道 2 條分支 label 全空 → 不跳 warning ✓ (c) OR 閘道 2 條分支但只 1 條有 target → 不再跳「至少 2 個目標」warning（rule 1 + rule 3c-bis 接管）✓ (d) 任何閘道刪到 1 條 → 跳「閘道應有至少 2 條分支」warning ✓ (e) 規則說明 ELEMENTS 顯示三閘道列點 + VALIDATION 顯示新「XOR 必填」條目 ✓ (f) ChangelogPanel 顯示日期：PR #135 5/3、PR #131 / #130 / #129 4/30、PR #132 / #133 5/3、c23 內 PR #122-#128 4/30 ✓',
+    ],
+  },
+  {
     date: '2026-05-03',
     title: 'Undo / Redo（50 步 snapshot stack，儲存後清空，Ctrl+Z / Ctrl+Y）',
     items: [
@@ -62,7 +75,7 @@ export default [
     ],
   },
   {
-    date: '2026-05-03',
+    date: '2026-04-30',
     title: '修連線刪除 ✕ 按鈕對長連線飄太遠 — 改用 polyline 真實中點',
     items: [
       '**緣由**：使用者：「跨很多任務或是跨比較多泳道的線，顯示出的delete icon 會離線段很遠，很不直覺，使用者也很難找到。我希望可以在線段的正中間」。PR #130 用 srcPort 與 tgtPort 的幾何中點當 ✕ 位置，對短直線 OK，但跨欄 / 跨列 / 走 top-bottom corridor 的路徑會大幅繞路 — geometric 直線中點落在實際 polyline 之外，使用者要在線旁找一個飄走的 ✕。',
@@ -73,7 +86,7 @@ export default [
     ],
   },
   {
-    date: '2026-05-03',
+    date: '2026-04-30',
     title: '流程圖點選線段刪除 + 閘道 <2 分支 warning + undo 列入長期 backlog',
     items: [
       '**緣由**：使用者：「我想要新增一個功能，是使用者可以點選流程圖上的線段後刪除」。既有基礎建設（連線選取 + 端點 handle）已有，補上刪除 action + UI 觸發點即可。',
@@ -88,7 +101,7 @@ export default [
     ],
   },
   {
-    date: '2026-05-03',
+    date: '2026-04-30',
     title: 'changelog freeze c23 — current.js reset 避免並行 PR 衝突',
     items: [
       '**緣由**：current.js 累積到 ~19KB（PR #122 / #123 / #124 / PR-A #126 / PR-B #127 / PR-C #128 六條合計），遠超 CLAUDE.md §4 訂的 7KB freeze threshold。歷史教訓：PR #119 vs #118 在 current.js 撞 conflict 過、要手動 rebase。先 freeze c23，避免下次兩個 feature 並行 PR 同樣再撞一次。',
