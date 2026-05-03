@@ -83,7 +83,7 @@ export function L4Number({ number, cx, y }) {
   return (
     <g>
       <rect x={cx - w / 2} y={baselineY - h / 2} width={w} height={h}
-        fill={COLORS.ARROW_LABEL_BG} opacity={0.9} rx={2} />
+        fill={COLORS.ARROW_LABEL_BG} opacity={0.6} rx={2} />
       <text x={cx} y={baselineY} textAnchor="middle" dominantBaseline="middle"
         fontSize={fontSize} fill={COLORS.TASK_NUMBER}
         fontFamily="Microsoft JhengHei, PingFang TC, sans-serif">
@@ -93,7 +93,7 @@ export function L4Number({ number, cx, y }) {
   );
 }
 
-export function EventLabel({ cx, y, name, desc }) {
+export function EventLabel({ cx, y, name, desc, minX = 0 }) {
   const fontFamily = 'Microsoft JhengHei, PingFang TC, sans-serif';
   // Events (start/end) sit in roughly one column width (184px);
   // wrap at ~11 CJK chars for the name and ~14 for the smaller description
@@ -103,11 +103,22 @@ export function EventLabel({ cx, y, name, desc }) {
   const nameLineH = 20;
   const descLineH = 19;
   const gap = 4;
+  // Avoid overlapping the sticky left lane-header column: if the longest
+  // name/desc line would draw left of `minX`, shift cx right by just enough
+  // (textAnchor stays "middle" so the label is still centered relative to
+  // its visible width). Caller passes minX = LANE_HEADER_W + safety gap.
+  const widestLine = Math.max(
+    0,
+    ...nameLines.map(l => estimateTextWidth(l, 14)),
+    ...descLines.map(l => estimateTextWidth(l, 13)),
+  );
+  const leftEdge = cx - widestLine / 2;
+  const adjCx = leftEdge < minX ? cx + (minX - leftEdge) : cx;
   let cursor = y;
   return (
     <>
       {nameLines.map((line, i) => (
-        <text key={`n${i}`} x={cx} y={cursor + i * nameLineH}
+        <text key={`n${i}`} x={adjCx} y={cursor + i * nameLineH}
           textAnchor="middle" dominantBaseline="middle"
           fontSize={14} fill={COLORS.TASK_TEXT} fontFamily={fontFamily}>
           {line}
@@ -116,7 +127,7 @@ export function EventLabel({ cx, y, name, desc }) {
       {descLines.length > 0 && descLines.map((line, i) => {
         const y0 = cursor + Math.max(nameLines.length, 1) * nameLineH + gap + i * descLineH;
         return (
-          <text key={`d${i}`} x={cx} y={y0}
+          <text key={`d${i}`} x={adjCx} y={y0}
             textAnchor="middle" dominantBaseline="middle"
             fontSize={13} fill="#6B7280" fontFamily={fontFamily}>
             {line}
