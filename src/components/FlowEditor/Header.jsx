@@ -16,7 +16,8 @@ import { LegendModal } from '../DiagramRenderer/legend.jsx';
  */
 export function Header({ liveFlow, hasChanges, logoReaction, onBack, onPatch,
   onTogglePin, onOpenDrawer, onSave, onResetAllConfirm, downloadHandlers,
-  onUndo, onRedo, canUndo = false, canRedo = false }) {
+  onUndo, onRedo, canUndo = false, canRedo = false,
+  savePulse = 'none' }) {
   const [downloadOpen, setDownloadOpen] = useState(false);
   const [legendOpen, setLegendOpen] = useState(false);
   const downloadRef = useRef(null);
@@ -137,12 +138,17 @@ export function Header({ liveFlow, hasChanges, logoReaction, onBack, onPatch,
         </div>
         <button
           onClick={onSave}
-          title={hasChanges ? '儲存所有變更' : '目前沒有未儲存的變更'}
+          title={
+            !hasChanges ? '目前沒有未儲存的變更' :
+            savePulse === 'continuous' ? '已閒置 ≥2 分鐘未儲存，建議儲存' :
+            savePulse === 'brief' ? '編輯時間較長，建議儲存' :
+            '儲存所有變更'
+          }
           className={`px-3 py-1.5 text-base rounded border transition-colors ${
             hasChanges
               ? 'border-white bg-white text-[#1E4677] font-semibold hover:bg-opacity-90'
               : 'border-white border-opacity-40 text-white hover:bg-white hover:bg-opacity-10'
-          }`}>
+          } ${savePulse !== 'none' ? 'save-pulse' : ''}`}>
           儲存
         </button>
         <button

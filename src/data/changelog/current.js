@@ -6,6 +6,20 @@
 export default [
   {
     date: '2026-05-04',
+    title: '儲存提醒：「儲存」按鈕黃色脈衝動畫（雙觸發 — 持續編輯 3/5min + 閒置 2min）',
+    items: [
+      '**緣由**：使用者：「我希望做一個儲存的提醒...持續編輯超過 3 & 5 分鐘儲存動態要啟動但不持續、閒置 2 分鐘以上儲存動態要持續閃耀」。對應 backlog V「儲存事件閃亮提醒」變體升級。',
+      '**Step 1 — `index.css` 加 `@keyframes save-pulse`**：黃色 glow ring（`rgba(250, 204, 21)` Tailwind amber-400）從 0 擴散到 8px 透明 + 微 scale 1.0↔1.05，1.4s 一個週期 ease-in-out infinite。`.save-pulse` class 套上去就動。',
+      '**Step 2 — `FlowEditor/index.jsx` 加 `pulseMode` state + 兩條 useEffect**：(a) state `\'none\' | \'brief\' | \'continuous\'`、`editStamp` counter（每次 patch +1，給 idle effect 偵測活動）、`editingStartRef` 記錄「上次儲存後第一次編輯」的 timestamp (b) 閒置 effect（依 `editStamp` 重設）：每次 editStamp 變更 → drop continuous（若有）+ schedule 2 分鐘 timer → 若 fired set `continuous` (c) 編輯時長 effect（依 `hasChanges` 重設）：first edit 起算，3min / 5min 各 schedule one-shot trigger → fire `brief` + 8 秒後 auto clear (d) brief 不會 override continuous（continuous 是更急的狀態）。',
+      '**Step 3 — `doSave` 重置**：`pulseMode=\'none\'` + `editingStartRef.current=null`，下次編輯計時重新算。',
+      '**Step 4 — `Header.jsx` 加 `savePulse` prop**：儲存按鈕條件加 `save-pulse` class（任一非 none 狀態都加）；`title` tooltip 動態：「閒置 ≥2 分鐘」/「編輯時間較長」/「儲存所有變更」/「沒有未儲存的變更」四種文字。',
+      '**Step 5 — Save modal 開啟 / resetAll modal 開啟期間 stop**：閒置 effect 已加 `saveModal || resetAllModal` 提前 return，動畫不會在使用者處理 modal 時干擾。',
+      '**動到的檔案（5 個）**：`src/index.css`（+`@keyframes save-pulse` + `.save-pulse` class）/ `src/components/FlowEditor/index.jsx`（pulseMode state + editStamp + editingStartRef + 兩條 useEffect + doSave 重置 + Header prop）/ `src/components/FlowEditor/Header.jsx`（savePulse prop + 動態 className + tooltip）/ `src/data/helpPanelData.js`（EDITABLE_ACTIONS 新條目）/ `src/data/changelog/current.js`（本條）。`build` 通過。',
+      '**驗證情境**：(a) 編輯一次後等 2 分鐘 → 儲存按鈕開始持續黃色脈衝 ✓ (b) 在脈衝中按任意輸入 → 動畫立刻停、新 2 分鐘倒數 ✓ (c) 持續編輯到 3 分鐘整數秒 → 短暫脈衝 8 秒後自動停 ✓ (d) 持續編輯到 5 分鐘 → 再短暫脈衝 8 秒 ✓ (e) 連續編輯到 5 分鐘以上不停 → 後續無再 trigger（直到使用者停下 2 分鐘換 continuous 接手）✓ (f) 按儲存 → 動畫停、計時器全清 ✓ (g) save modal 開啟期間 → 不會 trigger 新動畫 ✓ (h) hover 儲存按鈕 → tooltip 顯示對應原因 ✓',
+    ],
+  },
+  {
+    date: '2026-05-04',
     title: '閘道規則拉齊（≥2 分支三類一致 / XOR 條件必填、AND/OR 選填）+ 修上次誤改的 changelog 日期',
     items: [
       '**緣由**：使用者：「我希望拉齊三種閘道的規則 — (1) 預設要至少兩條分支，可自行增加分支，小於兩個分支儲存時跳提醒 (2) 都可選填條件，但排他閘道如果沒有寫條件儲存時要跳提醒，並行和包容閘道則不強制填寫條件、也不跳提醒」+「日期跟下一個 PR 一起修」（PR #134 把 4/30 都誤改成 5/3）。',
