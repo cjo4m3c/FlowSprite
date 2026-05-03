@@ -94,9 +94,21 @@ export function validateFlow(flow) {
     // already exists). Old saved data is migrated to -branch by
     // storage.migrateMergeConnectionType.
 
-    // 3c. Inclusive-branch needs ≥2 conditions wired up.
-    if (ct === 'inclusive-branch' && (t.conditions || []).filter(c => c.nextTaskId).length < 2) {
-      warnings.push(`${label}：包容分支至少需要 2 個目標`);
+    // 3c (rewritten 2026-05-04 per user spec): the three gateway types
+    // share one branch-count rule (rule 3c-bis below covers all three) and
+    // diverge only on label-required behavior:
+    //   - XOR (conditional-branch): every condition's `label` should be
+    //     filled (it's the trigger expression). Empty label → warning.
+    //   - AND (parallel-branch): label is purely note; no warning.
+    //   - OR  (inclusive-branch): label is the trigger condition but per
+    //     user spec follows AND's "optional, no warning" rule.
+    // (Replaces the previous OR-only "≥2 wired targets" rule, which is
+    // subsumed by 3c-bis's ≥2 condition rows + rule 1's "must have next".)
+    if (ct === 'conditional-branch' && t.type === 'gateway') {
+      const emptyLabels = (t.conditions || []).filter(c => !c.label?.trim()).length;
+      if (emptyLabels > 0) {
+        warnings.push(`${label}（排他閘道）：有 ${emptyLabels} 個分支沒有填寫條件標籤（XOR 需要明確的觸發條件）`);
+      }
     }
 
     // 3c-bis (2026-04-30): any gateway should have ≥2 branch conditions.
