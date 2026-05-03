@@ -6,6 +6,18 @@
 export default [
   {
     date: '2026-04-30',
+    title: '流程圖 3 個微調：start/end 不再下方顯示說明 / start label 防壓泳道頭 / L4 編號白底降透明度',
+    items: [
+      '**緣由**：使用者：「(1) 開始事件、結束事件現在下方也會顯示任務重點說明，但是 hover 也會顯示，我希望保留 hover 就好，下方的說明移除 (2) 開始事件的說明文字很容易跟左側角色區塊重疊、導致看不到字 (3) 每個任務上編號，在有跟端點重疊的時候，現行有一個白色底色，但是會有點看不見箭頭，因此我希望可以提高一點透明度」。',
+      '**#1 修法（`shapes.jsx StartShape / EndShape`）**：StartShape 不再傳 `desc` 給 `EventLabel`（下方只剩 name）。EndShape 只在 connectionType=breakpoint 且有 breakpointReason 時傳 desc（保留斷點原因 — 結構性 marker，非 description）；其他情況 desc=undefined。Hover tooltip（在 `TasksLayer`）走 `task.description?.trim()` 邏輯不變，所以 hover 仍能看到說明。',
+      '**#2 修法（`text.jsx EventLabel`）**：加 `minX` prop（預設 0），用 `estimateTextWidth` 算最寬一行文字的寬度，若 `cx - widestLine/2 < minX` 把 cx 往右推 `minX - leftEdge` 距離。`textAnchor="middle"` 不變，所以視覺上仍是「居中於可見範圍」，只是基準點位移了。`shapes.jsx` 加 `EVENT_LABEL_MIN_X = LANE_HEADER_W + 6` 常數傳給 EventLabel。第一欄 start 事件文字不會再壓進左邊的 sticky 角色泳道區塊。',
+      '**#3 修法（`text.jsx L4Number`）**：白底 pill 的 `opacity` 從 0.9 降到 0.6 — 半透明，數字仍清楚（深色字 + 白底反差大），但底下箭頭線段透出來，使用者一眼看得到「這個編號旁邊有線進/出」。',
+      '**動到的檔案（3 個）**：`src/components/DiagramRenderer/text.jsx`（EventLabel +minX clamp + L4Number opacity 0.9→0.6）/ `src/components/DiagramRenderer/shapes.jsx`（StartShape 不傳 desc + EndShape desc 改成只傳 breakpointReason + 兩個 shape 都傳 minX 常數）/ `src/data/changelog/current.js`（本條）。`build` 通過。',
+      '**驗證情境**：(a) StartShape 圈下方只顯示 task.name，無 description ✓ (b) EndShape 圈下方一般情況只顯示 name；breakpoint 顯示「【斷點：原因】」 ✓ (c) hover start/end 元件，描述仍出現在 tooltip ✓ (d) 第一欄 start 事件名稱不會往左壓進左側 sticky 角色泳道 (e) 任務上方端點有箭頭時，編號白底半透明，箭頭線段可見、編號文字依然清楚 ✓',
+    ],
+  },
+  {
+    date: '2026-04-30',
     title: '外部關係人互動 `_w` 編號 + 不對稱 sync + 流程圖隱藏編號（一致業務規則重整）',
     items: [
       '**緣由**：使用者：「我希望調整『外部關係人互動』的編號方式與規則 — 跟現在閘道的編號邏輯一樣用『前一個L4編號＋後綴』的方式，後綴為 `_w`」+「Excel 匯入有 `_w` 但對應角色 internal → 改為跳提醒讓使用者檢查，仍然可以匯入」+「外部互動在流程圖上不顯示編號，但會顯示在表格中」。把 `_w` 加進跟 `_g`/`_s` 同一個後綴 family。',

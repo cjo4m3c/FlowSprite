@@ -1,7 +1,11 @@
 import { LAYOUT, COLORS } from '../../diagram/constants.js';
 import { SvgLabel, L4Number, EventLabel } from './text.jsx';
 
-const { NODE_W, NODE_H, DIAMOND_SIZE, CIRCLE_R } = LAYOUT;
+const { NODE_W, NODE_H, DIAMOND_SIZE, CIRCLE_R, LANE_HEADER_W } = LAYOUT;
+// Keep event labels at least this far to the right of the sticky role
+// header so the name doesn't render under the lane-header column. 6px
+// safety gap on top of LANE_HEADER_W's right edge.
+const EVENT_LABEL_MIN_X = LANE_HEADER_W + 6;
 
 const HOVER_STROKE = '#2563EB'; // Tailwind blue-600
 const HOVER_TINT   = '#DBEAFE'; // Tailwind blue-100
@@ -14,23 +18,30 @@ export function StartShape({ pos, l4Number, task, isHovered }) {
     <>
       <L4Number number={l4Number} cx={cx} y={cy - CIRCLE_R} />
       <circle cx={cx} cy={cy} r={CIRCLE_R} fill={COLORS.START_FILL} stroke={stroke} strokeWidth={strokeW} />
-      <EventLabel cx={cx} y={cy + CIRCLE_R + 18} name={task.name} desc={task.description} />
+      {/* 2026-04-30 後段: drop description text below the circle (now
+          shown only in the hover tooltip per user spec). minX clamps
+          the label away from the sticky lane-header column. */}
+      <EventLabel cx={cx} y={cy + CIRCLE_R + 18} name={task.name}
+        minX={EVENT_LABEL_MIN_X} />
     </>
   );
 }
 
 export function EndShape({ pos, l4Number, task, isHovered }) {
   const { cx, cy } = pos;
+  // Keep breakpoint reason visible (structural marker, not a description);
+  // task.description is now hidden below the event — see hover tooltip instead.
   const desc = task.connectionType === 'breakpoint' && task.breakpointReason
     ? `【斷點：${task.breakpointReason}】`
-    : task.description;
+    : undefined;
   const stroke = isHovered ? HOVER_STROKE : COLORS.END_FILL;
   const strokeW = isHovered ? 3 : 2;
   return (
     <>
       <L4Number number={l4Number} cx={cx} y={cy - CIRCLE_R} />
       <circle cx={cx} cy={cy} r={CIRCLE_R} fill={COLORS.END_FILL} stroke={stroke} strokeWidth={strokeW} />
-      <EventLabel cx={cx} y={cy + CIRCLE_R + 18} name={task.name} desc={desc} />
+      <EventLabel cx={cx} y={cy + CIRCLE_R + 18} name={task.name} desc={desc}
+        minX={EVENT_LABEL_MIN_X} />
     </>
   );
 }
